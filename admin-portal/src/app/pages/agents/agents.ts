@@ -1,6 +1,7 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../services/toast.service';
+import { AgentService, Agent as ApiAgent } from '../../services/agent.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -8,10 +9,12 @@ interface Agent {
   id: string;
   name: string;
   active: boolean;
-  number: string;        // display-formatted, e.g. +60 12-345 6789
-  model: string;         // e.g. claude-sonnet-4-6
-  conversations: number; // count handled
-  systemPrompt: string;  // agent behaviour instructions
+  role: string;          // agent | lead | admin (persisted)
+  status: string;        // active | suspended (persisted)
+  number: string;        // display-only — no backend field yet
+  model: string;         // UI-only until backend adds it
+  conversations: number; // UI-only until backend adds it
+  systemPrompt: string;  // UI-only agent behaviour instructions
 }
 
 @Component({
@@ -22,8 +25,45 @@ interface Agent {
     <ion-content>
       <div class="ag-shell">
 
+        <!-- ── STATE: loading ──────────────────────────────────────── -->
+        @if (loading()) {
+          <div class="ag-head">
+            <div class="ag-head-text">
+              <h1 class="ag-title">Agents</h1>
+              <p class="ag-subtitle">Configure your AI agents</p>
+            </div>
+          </div>
+          <div class="ag-grid">
+            @for (s of [1,2,3]; track s) {
+              <div class="ag-card ag-card--skeleton">
+                <div class="ag-sk ag-sk--icon"></div>
+                <div class="ag-sk ag-sk--line" style="width:60%"></div>
+                <div class="ag-sk ag-sk--line" style="width:80%"></div>
+                <div class="ag-sk ag-sk--line" style="width:45%"></div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- ── STATE: error ────────────────────────────────────────── -->
+        @else if (error()) {
+          <div class="ag-empty">
+            <div class="ag-empty-card">
+              <div class="ag-empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              </div>
+              <h2 class="ag-empty-title">Couldn’t load agents</h2>
+              <p class="ag-empty-sub">Something went wrong reaching the server. Please try again.</p>
+              <button class="ag-btn ag-btn--primary ag-btn--lg" (click)="loadAgents()">Retry</button>
+            </div>
+          </div>
+        }
+
         <!-- ── STATE B: configured agents list ─────────────────────── -->
-        @if (showList()) {
+        @else if (showList()) {
           <div class="ag-head">
             <div class="ag-head-text">
               <h1 class="ag-title">Agents</h1>
@@ -73,7 +113,7 @@ interface Agent {
                 </div>
 
                 <div class="ag-actions">
-                  <button class="ag-btn ag-btn--outline" type="button" (click)="configAgent.set(a)">Configure</button>
+                  <button class="ag-btn ag-btn--outline" type="button" (click)="openConfig(a)">Configure</button>
                   <button class="ag-link" type="button" (click)="toggleActive(a)">{{ a.active ? 'Deactivate' : 'Activate' }}</button>
                   <button class="ag-link ag-link--danger" type="button" (click)="pendingDelete.set(a)">Delete</button>
                 </div>
@@ -128,6 +168,17 @@ interface Agent {
                   [ngModel]="nameInput()"
                   (ngModelChange)="nameInput.set($event)"
                   placeholder="Support Bot" />
+              </div>
+
+              <div class="ag-field">
+                <label class="ag-field-label" for="ag-email-input">Agent email</label>
+                <input
+                  id="ag-email-input"
+                  class="ag-input"
+                  type="email"
+                  [ngModel]="emailInput()"
+                  (ngModelChange)="emailInput.set($event)"
+                  placeholder="support@echora.app" />
               </div>
 
               <div class="ag-field">
@@ -203,7 +254,8 @@ interface Agent {
             <!-- Name -->
             <div class="ag-drawer-field">
               <label>Agent Name</label>
-              <input type="text" [value]="ca.name" class="ag-input" />
+              <input type="text" class="ag-input"
+                [ngModel]="configName()" (ngModelChange)="configName.set($event)" />
             </div>
 
             <!-- Active toggle -->
@@ -281,6 +333,19 @@ interface Agent {
     .ag-subtitle {
       font-size: 14px; color: var(--admin-text-secondary); margin: 4px 0 0;
     }
+
+    /* ── skeleton loading ─────────────────────────────────────── */
+    .ag-card--skeleton { pointer-events: none; }
+    .ag-sk {
+      background: linear-gradient(90deg,
+        var(--admin-border) 25%, rgba(255,255,255,0.04) 37%, var(--admin-border) 63%);
+      background-size: 400% 100%;
+      animation: ag-shimmer 1.4s ease infinite;
+      border-radius: 6px;
+    }
+    .ag-sk--icon { width: 44px; height: 44px; border-radius: 12px; margin-bottom: 16px; }
+    .ag-sk--line { height: 12px; margin: 10px 0; }
+    @keyframes ag-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 
     /* ── buttons ──────────────────────────────────────────────── */
     .ag-btn {
@@ -538,68 +603,158 @@ interface Agent {
     }
   `],
 })
-export class AgentsPage {
+export class AgentsPage implements OnInit {
   private readonly toast = inject(ToastService);
+  private readonly api = inject(AgentService);
 
-  // Show STATE B (list) by default per spec; modal hidden by default.
-  readonly showList = signal(true);
+  // list is shown once data loads and there is at least one agent.
+  readonly showList = signal(false);
+  readonly loading = signal(true);
+  readonly error = signal(false);
   readonly modalOpen = signal(false);
 
   // which agent is being configured (null = drawer closed)
   readonly configAgent = signal<Agent | null>(null);
+  // editable draft of the configured agent's name (drawer)
+  readonly configName = signal('');
 
   // agent queued for deletion (null = confirm modal closed)
   readonly pendingDelete = signal<Agent | null>(null);
 
   // create-form fields
   readonly nameInput = signal('');
+  readonly emailInput = signal('');
   readonly numberInput = signal('');
   readonly promptInput = signal('');
   readonly modelInput = signal('claude-sonnet-4-6');
 
-  readonly agents = signal<Agent[]>([
-    { id: 'a1', name: 'Support Bot', active: true, number: '+60 12-345 6789', model: 'claude-sonnet-4-6', conversations: 142,
-      systemPrompt: 'You are a helpful support agent for Echora. Answer customer questions clearly, escalate billing disputes to a human, and always confirm resolution before closing a conversation.' },
-    { id: 'a2', name: 'Sales Assistant', active: false, number: '+60 19-876 5432', model: 'claude-haiku-4-5', conversations: 37,
-      systemPrompt: 'You are a friendly sales assistant. Qualify leads, share pricing tiers, and book demos. Keep replies concise and action-oriented.' },
-  ]);
+  readonly agents = signal<Agent[]>([]);
 
-  openModal(): void { this.modalOpen.set(true); }
+  ngOnInit(): void {
+    this.loadAgents();
+  }
+
+  /** Map an API agent into the local card view model. */
+  private toView(a: ApiAgent): Agent {
+    return {
+      id: a.id,
+      name: a.displayName,
+      active: a.isActive,
+      role: a.role,
+      status: a.status,
+      number: '—',                         // no WA linkage in backend yet
+      model: 'claude-sonnet-4-6',          // UI-only default
+      conversations: 0,                    // UI-only until backend exposes it
+      systemPrompt: '',                    // UI-only
+    };
+  }
+
+  /** Fetch the agent list from the API. */
+  loadAgents(): void {
+    this.error.set(false);
+    this.loading.set(true);
+    this.api.getAgents().subscribe({
+      next: (rows) => {
+        const mapped = rows.map((a) => this.toView(a));
+        this.agents.set(mapped);
+        this.showList.set(mapped.length > 0);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set(true);
+      },
+    });
+  }
+
+  openModal(): void {
+    this.nameInput.set('');
+    this.emailInput.set('');
+    this.numberInput.set('');
+    this.promptInput.set('');
+    this.modelInput.set('claude-sonnet-4-6');
+    this.modalOpen.set(true);
+  }
   closeModal(): void { this.modalOpen.set(false); }
 
+  /** Open the configure drawer and seed the editable name draft. */
+  openConfig(a: Agent): void {
+    this.configName.set(a.name);
+    this.configAgent.set(a);
+  }
+
   createAgent(): void {
-    this.closeModal();
-    this.toast.show('Agent created', 'success');
+    const name = this.nameInput().trim();
+    const email = this.emailInput().trim();
+    if (!name) { this.toast.show('Agent name is required', 'error'); return; }
+    if (!email) { this.toast.show('Agent email is required', 'error'); return; }
+
+    this.api.createAgent({ email, displayName: name, role: 'agent', status: 'active' }).subscribe({
+      next: (created) => {
+        this.agents.update((list) => [this.toView(created), ...list]);
+        this.showList.set(true);
+        this.closeModal();
+        this.toast.show('Agent created', 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not create agent', 'error'),
+    });
   }
 
   /** Flip the active flag on the agent currently open in the drawer. */
   toggleStatus(): void {
     const ca = this.configAgent();
     if (!ca) return;
-    const next = { ...ca, active: !ca.active };
-    this.configAgent.set(next);
-    this.agents.update((list) => list.map((a) => (a.id === next.id ? next : a)));
+    this.api.toggleAgent(ca.id).subscribe({
+      next: (updated) => {
+        const next = { ...ca, active: updated.isActive };
+        this.configAgent.set(next);
+        this.agents.update((list) => list.map((a) => (a.id === next.id ? next : a)));
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not update agent', 'error'),
+    });
   }
 
-  /** Persist drawer edits (mock), confirm via toast, then close. */
+  /** Persist drawer name edit, confirm via toast, then close. */
   saveConfig(): void {
-    this.toast.show('Agent configuration saved', 'success');
-    this.configAgent.set(null);
+    const ca = this.configAgent();
+    if (!ca) return;
+    const name = this.configName().trim();
+    if (!name) { this.toast.show('Agent name cannot be empty', 'error'); return; }
+
+    this.api.updateAgent(ca.id, { displayName: name }).subscribe({
+      next: (updated) => {
+        this.agents.update((list) =>
+          list.map((a) => (a.id === ca.id ? { ...a, name: updated.displayName } : a)));
+        this.configAgent.set(null);
+        this.toast.show('Agent configuration saved', 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not save agent', 'error'),
+    });
   }
 
   /** Flip active state from the list card + confirm via toast. */
   toggleActive(a: Agent): void {
-    const next = { ...a, active: !a.active };
-    this.agents.update((list) => list.map((x) => (x.id === a.id ? next : x)));
-    this.toast.show(next.active ? `${a.name} activated` : `${a.name} deactivated`, 'success');
+    this.api.toggleAgent(a.id).subscribe({
+      next: (updated) => {
+        this.agents.update((list) =>
+          list.map((x) => (x.id === a.id ? { ...x, active: updated.isActive } : x)));
+        this.toast.show(updated.isActive ? `${a.name} activated` : `${a.name} deactivated`, 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not update agent', 'error'),
+    });
   }
 
   /** Remove the agent queued in pendingDelete, toast, and close the confirm. */
   deleteAgent(a: Agent): void {
-    this.agents.update((list) => list.filter((x) => x.id !== a.id));
-    this.pendingDelete.set(null);
-    if (this.configAgent()?.id === a.id) this.configAgent.set(null);
-    this.showList.set(this.agents().length > 0);
-    this.toast.show(`${a.name} deleted`, 'success');
+    this.api.deleteAgent(a.id).subscribe({
+      next: () => {
+        this.agents.update((list) => list.filter((x) => x.id !== a.id));
+        this.pendingDelete.set(null);
+        if (this.configAgent()?.id === a.id) this.configAgent.set(null);
+        this.showList.set(this.agents().length > 0);
+        this.toast.show(`${a.name} deleted`, 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not delete agent', 'error'),
+    });
   }
 }

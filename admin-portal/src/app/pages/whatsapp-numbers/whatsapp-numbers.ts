@@ -1,15 +1,17 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../services/toast.service';
+import { WhatsAppNumberService, WhatsappNumber as ApiWhatsappNumber } from '../../services/whatsapp-number.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
 interface WhatsAppNumber {
   id: string;
-  phone: string;        // display-formatted, e.g. +60 12-345 6789
-  label: string;
-  active: boolean;
-  lastActivity: string; // human string, e.g. "2 hours ago"
+  phone: string;        // phoneNumber from backend
+  label: string;        // displayName from backend
+  active: boolean;      // isActive from backend
+  businessAccountId: string; // wabaId from backend
+  lastActivity: string; // human string derived from updatedAt
 }
 
 @Component({
@@ -20,8 +22,46 @@ interface WhatsAppNumber {
     <ion-content>
       <div class="wa-shell">
 
+        <!-- ── STATE: loading ──────────────────────────────────────── -->
+        @if (loading()) {
+          <div class="wa-head">
+            <div class="wa-head-text">
+              <h1 class="wa-title">WhatsApp Numbers</h1>
+              <p class="wa-subtitle">Manage your connected inboxes</p>
+            </div>
+          </div>
+          <div class="wa-list">
+            @for (s of [1,2,3]; track s) {
+              <div class="wa-card wa-card--skeleton">
+                <div class="wa-sk wa-sk--icon"></div>
+                <div class="wa-card-body">
+                  <div class="wa-sk wa-sk--line" style="width:55%"></div>
+                  <div class="wa-sk wa-sk--line" style="width:75%"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- ── STATE: error ────────────────────────────────────────── -->
+        @else if (error()) {
+          <div class="wa-empty">
+            <div class="wa-empty-card">
+              <div class="wa-empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              </div>
+              <h2 class="wa-empty-title">Couldn’t load numbers</h2>
+              <p class="wa-empty-sub">Something went wrong reaching the server. Please try again.</p>
+              <button class="wa-btn wa-btn--primary wa-btn--lg" (click)="loadNumbers()">Retry</button>
+            </div>
+          </div>
+        }
+
         <!-- ── STATE B: connected numbers list ─────────────────────── -->
-        @if (showList()) {
+        @else if (showList()) {
           <div class="wa-head">
             <div class="wa-head-text">
               <h1 class="wa-title">WhatsApp Numbers</h1>
@@ -59,6 +99,13 @@ interface WhatsAppNumber {
                     <span class="wa-dot-sep">•</span>
                     <span class="wa-activity">Last activity {{ n.lastActivity }}</span>
                   </div>
+                  @if (n.businessAccountId) {
+                    <div class="wa-card-row wa-card-meta">
+                      <span class="wa-label">Business Account ID</span>
+                      <span class="wa-dot-sep">•</span>
+                      <span class="wa-activity wa-mono">{{ n.businessAccountId }}</span>
+                    </div>
+                  }
                 </div>
 
                 <div class="wa-actions">
@@ -118,6 +165,28 @@ interface WhatsAppNumber {
                   [ngModel]="phoneInput()"
                   (ngModelChange)="phoneInput.set($event)"
                   placeholder="+60 1X-XXX XXXX" />
+              </div>
+
+              <div class="wa-field">
+                <label class="wa-field-label" for="wa-label-input">Inbox label</label>
+                <input
+                  id="wa-label-input"
+                  class="wa-input wa-input--text"
+                  type="text"
+                  [ngModel]="labelInput()"
+                  (ngModelChange)="labelInput.set($event)"
+                  placeholder="e.g. Support Line" />
+              </div>
+
+              <div class="wa-field">
+                <label class="wa-field-label" for="wa-waba-input">Business Account ID</label>
+                <input
+                  id="wa-waba-input"
+                  class="wa-input wa-input--text"
+                  type="text"
+                  [ngModel]="wabaInput()"
+                  (ngModelChange)="wabaInput.set($event)"
+                  placeholder="Optional — WhatsApp Business Account ID" />
               </div>
 
               <div class="wa-qr">
@@ -214,6 +283,21 @@ interface WhatsAppNumber {
     .wa-subtitle {
       font-size: 14px; color: var(--admin-text-secondary); margin: 4px 0 0;
     }
+
+    .wa-mono { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
+
+    /* ── skeleton loading ─────────────────────────────────────── */
+    .wa-card--skeleton { pointer-events: none; }
+    .wa-sk {
+      background: linear-gradient(90deg,
+        var(--admin-border) 25%, rgba(255,255,255,0.04) 37%, var(--admin-border) 63%);
+      background-size: 400% 100%;
+      animation: wa-shimmer 1.4s ease infinite;
+      border-radius: 6px;
+    }
+    .wa-sk--icon { width: 40px; height: 40px; border-radius: 12px; flex: none; }
+    .wa-sk--line { height: 12px; margin: 8px 0; }
+    @keyframes wa-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 
     /* ── buttons ──────────────────────────────────────────────── */
     .wa-btn {
@@ -414,13 +498,19 @@ interface WhatsAppNumber {
     }
   `],
 })
-export class WhatsAppNumbersPage {
+export class WhatsAppNumbersPage implements OnInit {
   private readonly toast = inject(ToastService);
+  private readonly api = inject(WhatsAppNumberService);
 
-  // Show STATE B (list) by default per spec; modal hidden by default.
-  readonly showList = signal(true);
+  readonly showList = signal(false);
+  readonly loading = signal(true);
+  readonly error = signal(false);
   readonly modalOpen = signal(false);
+
+  // connect-form fields
   readonly phoneInput = signal('');
+  readonly labelInput = signal('');
+  readonly wabaInput = signal('');
 
   // rename modal target + draft label
   readonly renameTarget = signal<WhatsAppNumber | null>(null);
@@ -429,24 +519,97 @@ export class WhatsAppNumbersPage {
   // number queued for deletion (null = confirm modal closed)
   readonly pendingDelete = signal<WhatsAppNumber | null>(null);
 
-  readonly numbers = signal<WhatsAppNumber[]>([
-    { id: 'n1', phone: '+60 12-345 6789', label: 'Support Line', active: true, lastActivity: '2 hours ago' },
-    { id: 'n2', phone: '+60 19-876 5432', label: 'Sales Inbox', active: false, lastActivity: '3 days ago' },
-  ]);
+  readonly numbers = signal<WhatsAppNumber[]>([]);
 
-  openModal(): void { this.modalOpen.set(true); }
+  ngOnInit(): void {
+    this.loadNumbers();
+  }
+
+  /** Map an API whatsapp number into the local card view model. */
+  private toView(n: ApiWhatsappNumber): WhatsAppNumber {
+    return {
+      id: n.id,
+      phone: n.phoneNumber,
+      label: n.displayName,
+      active: n.isActive,
+      businessAccountId: n.wabaId || '',
+      lastActivity: this.relativeTime(n.updatedAt),
+    };
+  }
+
+  /** Human-friendly relative time from an ISO string. */
+  private relativeTime(iso?: string): string {
+    if (!iso) return 'just now';
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return 'just now';
+    const diff = Math.max(0, Date.now() - then);
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+
+  /** Fetch the connected numbers from the API. */
+  loadNumbers(): void {
+    this.error.set(false);
+    this.loading.set(true);
+    this.api.getNumbers().subscribe({
+      next: (rows) => {
+        const mapped = rows.map((n) => this.toView(n));
+        this.numbers.set(mapped);
+        this.showList.set(mapped.length > 0);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set(true);
+      },
+    });
+  }
+
+  openModal(): void {
+    this.phoneInput.set('');
+    this.labelInput.set('');
+    this.wabaInput.set('');
+    this.modalOpen.set(true);
+  }
   closeModal(): void { this.modalOpen.set(false); }
 
   connectNumber(): void {
-    this.closeModal();
-    this.toast.show('Number connected', 'success');
+    const phone = this.phoneInput().trim();
+    const label = this.labelInput().trim();
+    if (!phone) { this.toast.show('Phone number is required', 'error'); return; }
+    if (!label) { this.toast.show('Inbox label is required', 'error'); return; }
+
+    const waba = this.wabaInput().trim();
+    this.api.createNumber({
+      phoneNumber: phone,
+      displayName: label,
+      ...(waba ? { wabaId: waba } : {}),
+    }).subscribe({
+      next: (created) => {
+        this.numbers.update((list) => [this.toView(created), ...list]);
+        this.showList.set(true);
+        this.closeModal();
+        this.toast.show('Number connected', 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not connect number', 'error'),
+    });
   }
 
   /** Flip active state from the list card + confirm via toast. */
   toggleActive(n: WhatsAppNumber): void {
-    const next = { ...n, active: !n.active };
-    this.numbers.update((list) => list.map((x) => (x.id === n.id ? next : x)));
-    this.toast.show(next.active ? `${n.label} activated` : `${n.label} deactivated`, 'success');
+    this.api.toggleNumber(n.id).subscribe({
+      next: (updated) => {
+        this.numbers.update((list) =>
+          list.map((x) => (x.id === n.id ? { ...x, active: updated.isActive } : x)));
+        this.toast.show(updated.isActive ? `${n.label} activated` : `${n.label} deactivated`, 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not update number', 'error'),
+    });
   }
 
   /** Open the rename modal pre-filled with the current label. */
@@ -460,16 +623,27 @@ export class WhatsAppNumbersPage {
     const target = this.renameTarget();
     const label = this.renameInput().trim();
     if (!target || !label) return;
-    this.numbers.update((list) => list.map((x) => (x.id === target.id ? { ...x, label } : x)));
-    this.renameTarget.set(null);
-    this.toast.show('Inbox renamed', 'success');
+    this.api.updateNumber(target.id, { displayName: label }).subscribe({
+      next: (updated) => {
+        this.numbers.update((list) =>
+          list.map((x) => (x.id === target.id ? { ...x, label: updated.displayName } : x)));
+        this.renameTarget.set(null);
+        this.toast.show('Inbox renamed', 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not rename inbox', 'error'),
+    });
   }
 
   /** Remove the number queued in pendingDelete, toast, and close the confirm. */
   deleteNumber(n: WhatsAppNumber): void {
-    this.numbers.update((list) => list.filter((x) => x.id !== n.id));
-    this.pendingDelete.set(null);
-    this.showList.set(this.numbers().length > 0);
-    this.toast.show('Number removed', 'success');
+    this.api.deleteNumber(n.id).subscribe({
+      next: () => {
+        this.numbers.update((list) => list.filter((x) => x.id !== n.id));
+        this.pendingDelete.set(null);
+        this.showList.set(this.numbers().length > 0);
+        this.toast.show('Number removed', 'success');
+      },
+      error: (e) => this.toast.show(e?.message || 'Could not remove number', 'error'),
+    });
   }
 }
