@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import { redisConnection } from '../shared/redis.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
+import { getIO } from '../modules/realtime/gateway.js';
 
 // ─── Map WhatsApp Cloud API message.type → our MessageType enum ───
 function mapMessageType(waType) {
@@ -128,7 +129,7 @@ async function processInbound(job) {
           continue;
         }
 
-        await prisma.message.create({
+        const savedMessage = await prisma.message.create({
           data: {
             conversationId: conversation.id,
             contactId: contact.id,
@@ -139,6 +140,25 @@ async function processInbound(job) {
             status: 'received',
           },
         });
+
+        // ── Emit realtime message:new to the conversation room ──
+        // Clients join `conversation:${id}` via the gateway's join:conversation
+        // handler; emit to the same room so subscribers get the live update.
+        const io = getIO();
+        if (io) {
+          io.to(`conversation:${conversation.id}`).emit('message:new', {
+            conversationId: conversation.id,
+            message: {
+              id: savedMessage.id,
+              conversationId: savedMessage.conversationId,
+              direction: savedMessage.direction,
+              type: savedMessage.type,
+              content: savedMessage.body,
+              status: savedMessage.status,
+              createdAt: savedMessage.createdAt,
+            },
+          });
+        }
 
         processed += 1;
 

@@ -1,4 +1,14 @@
 import { prisma } from '../../lib/prisma.js';
+import { getIO } from '../realtime/gateway.js';
+
+// Emit message:new to the conversation's socket room. Clients subscribe via the
+// `join:conversation` handler, which joins `conversation:${id}` — emit to the
+// same room so live updates actually reach subscribers.
+function emitMessageNew(conversationId, message) {
+  const io = getIO();
+  if (!io) return;
+  io.to(`conversation:${conversationId}`).emit('message:new', { conversationId, message });
+}
 
 const VALID_STATUS = ['open', 'pending', 'resolved', 'closed'];
 
@@ -151,7 +161,10 @@ export class ConversationService {
       data: { lastMessageAt: message.createdAt },
     });
 
-    return { ok: true, detail: shapeMessage(message) };
+    const shaped = shapeMessage(message);
+    emitMessageNew(id, shaped);
+
+    return { ok: true, detail: shaped };
   }
 
   // PATCH /api/v1/conversations/:id/status
