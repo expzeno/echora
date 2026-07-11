@@ -11,6 +11,7 @@ interface Agent {
   number: string;        // display-formatted, e.g. +60 12-345 6789
   model: string;         // e.g. claude-sonnet-4-6
   conversations: number; // count handled
+  systemPrompt: string;  // agent behaviour instructions
 }
 
 @Component({
@@ -72,7 +73,7 @@ interface Agent {
                 </div>
 
                 <div class="ag-actions">
-                  <button class="ag-btn ag-btn--outline" type="button">Configure</button>
+                  <button class="ag-btn ag-btn--outline" type="button" (click)="configAgent.set(a)">Configure</button>
                   <button class="ag-link" type="button">{{ a.active ? 'Deactivate' : 'Activate' }}</button>
                   <button class="ag-link ag-link--danger" type="button">Delete</button>
                 </div>
@@ -171,6 +172,70 @@ interface Agent {
               </div>
             </div>
           </div>
+        }
+
+        <!-- ── CONFIGURE AGENT DRAWER ───────────────────────────────── -->
+        @if (configAgent(); as ca) {
+          <div class="ag-drawer-backdrop" (click)="configAgent.set(null)"></div>
+          <aside class="ag-drawer" role="dialog" aria-modal="true" aria-labelledby="ag-drawer-title">
+            <header class="ag-drawer-head">
+              <h2 id="ag-drawer-title">Configure Agent</h2>
+              <button class="ag-drawer-close" type="button" (click)="configAgent.set(null)" aria-label="Close">✕</button>
+            </header>
+
+            <!-- Name -->
+            <div class="ag-drawer-field">
+              <label>Agent Name</label>
+              <input type="text" [value]="ca.name" class="ag-input" />
+            </div>
+
+            <!-- Active toggle -->
+            <div class="ag-drawer-field ag-drawer-field--row">
+              <label>Active</label>
+              <button class="ag-toggle" type="button" [class.ag-toggle--on]="ca.active" (click)="toggleStatus()">
+                {{ ca.active ? 'On' : 'Off' }}
+              </button>
+            </div>
+
+            <!-- System Prompt -->
+            <div class="ag-drawer-field">
+              <label>System Prompt</label>
+              <textarea class="ag-input ag-textarea" rows="8"
+                [value]="ca.systemPrompt"
+                placeholder="You are a helpful support agent for..."></textarea>
+            </div>
+
+            <!-- Model select -->
+            <div class="ag-drawer-field">
+              <label>Model</label>
+              <select class="ag-input ag-select">
+                <option value="claude-sonnet-4-6" [selected]="ca.model === 'claude-sonnet-4-6'">claude-sonnet-4-6</option>
+                <option value="claude-haiku-4-5" [selected]="ca.model === 'claude-haiku-4-5'">claude-haiku-4-5</option>
+              </select>
+            </div>
+
+            <!-- WA Number -->
+            <div class="ag-drawer-field">
+              <label>WhatsApp Number</label>
+              <select class="ag-input ag-select">
+                <option [selected]="ca.number === '+60 12-345 6789'">+60 12-345 6789 (Support Line)</option>
+                <option [selected]="ca.number === '+60 19-876 5432'">+60 19-876 5432 (Sales Line)</option>
+              </select>
+            </div>
+
+            <!-- Performance stats -->
+            <div class="ag-drawer-stats">
+              <div class="ag-stat"><span class="ag-stat-val">{{ ca.conversations }}</span><span class="ag-stat-lbl">Conversations</span></div>
+              <div class="ag-stat"><span class="ag-stat-val">1m 24s</span><span class="ag-stat-lbl">Avg Response</span></div>
+              <div class="ag-stat"><span class="ag-stat-val">94%</span><span class="ag-stat-lbl">Resolution Rate</span></div>
+            </div>
+
+            <!-- Save -->
+            <div class="ag-drawer-actions">
+              <button class="ag-btn ag-btn--primary" type="button" (click)="saveConfig()">Save Changes</button>
+              <button class="ag-btn ag-btn--ghost" type="button" (click)="configAgent.set(null)">Cancel</button>
+            </div>
+          </aside>
         }
 
       </div>
@@ -381,6 +446,58 @@ interface Agent {
       display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;
     }
 
+    /* ── configure drawer ─────────────────────────────────────── */
+    .ag-drawer-backdrop {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(6,8,16,0.66);
+      backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    }
+    .ag-drawer {
+      position: fixed; top: 0; right: 0; z-index: 1001;
+      width: 480px; max-width: 100%; height: 100vh;
+      background: var(--surface); border-left: 1px solid var(--border);
+      overflow-y: auto; padding: 24px;
+      display: flex; flex-direction: column; gap: 16px;
+      box-shadow: -24px 0 60px rgba(0,0,0,0.5);
+      animation: ag-slide-in .2s ease;
+    }
+    @keyframes ag-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .ag-drawer-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .ag-drawer-head h2 {
+      font-family: var(--font-display); font-size: 19px; font-weight: 700;
+      letter-spacing: -0.3px; color: var(--admin-text); margin: 0;
+    }
+    .ag-drawer-close {
+      background: none; border: none; color: var(--admin-text-secondary);
+      font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 8px;
+      border-radius: var(--radius-sm); transition: background .12s, color .12s;
+    }
+    .ag-drawer-close:hover { background: var(--surface-2); color: var(--admin-text); }
+    .ag-drawer-field { display: flex; flex-direction: column; gap: 6px; }
+    .ag-drawer-field label {
+      font-size: 12px; font-weight: 600; color: var(--admin-text-secondary);
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .ag-drawer-field--row { flex-direction: row; justify-content: space-between; align-items: center; }
+    .ag-drawer .ag-textarea { resize: vertical; font-family: var(--font-mono); font-size: 13px; min-height: 140px; }
+    .ag-toggle {
+      padding: 5px 18px; border-radius: var(--radius-full);
+      border: 1px solid var(--border); cursor: pointer;
+      background: var(--surface-2); color: var(--admin-text-secondary);
+      font-family: var(--font-body); font-size: 13px; font-weight: 600;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .ag-toggle--on { background: var(--ec-teal-400); border-color: var(--ec-teal-400); color: #06121A; }
+    .ag-drawer-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      padding: 16px; background: var(--app-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .ag-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+    .ag-stat-val { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--admin-text); }
+    .ag-stat-lbl { font-size: 11px; color: var(--admin-text-secondary); }
+    .ag-drawer-actions { display: flex; gap: 10px; margin-top: auto; padding-top: 8px; }
+
     /* ── responsive ───────────────────────────────────────────── */
     @media (max-width: 767px) {
       .ag-shell { padding: 64px 16px 24px; }
@@ -388,6 +505,7 @@ interface Agent {
       .ag-grid { grid-template-columns: minmax(0, 1fr); }
       .ag-actions { flex-wrap: wrap; }
       .ag-modal { padding: 22px 18px; }
+      .ag-drawer { width: 100%; }
     }
   `],
 })
@@ -398,6 +516,9 @@ export class AgentsPage {
   readonly showList = signal(true);
   readonly modalOpen = signal(false);
 
+  // which agent is being configured (null = drawer closed)
+  readonly configAgent = signal<Agent | null>(null);
+
   // create-form fields
   readonly nameInput = signal('');
   readonly numberInput = signal('');
@@ -405,8 +526,10 @@ export class AgentsPage {
   readonly modelInput = signal('claude-sonnet-4-6');
 
   readonly agents = signal<Agent[]>([
-    { id: 'a1', name: 'Support Bot', active: true, number: '+60 12-345 6789', model: 'claude-sonnet-4-6', conversations: 142 },
-    { id: 'a2', name: 'Sales Assistant', active: false, number: '+60 19-876 5432', model: 'claude-haiku-4-5', conversations: 37 },
+    { id: 'a1', name: 'Support Bot', active: true, number: '+60 12-345 6789', model: 'claude-sonnet-4-6', conversations: 142,
+      systemPrompt: 'You are a helpful support agent for Echora. Answer customer questions clearly, escalate billing disputes to a human, and always confirm resolution before closing a conversation.' },
+    { id: 'a2', name: 'Sales Assistant', active: false, number: '+60 19-876 5432', model: 'claude-haiku-4-5', conversations: 37,
+      systemPrompt: 'You are a friendly sales assistant. Qualify leads, share pricing tiers, and book demos. Keep replies concise and action-oriented.' },
   ]);
 
   openModal(): void { this.modalOpen.set(true); }
@@ -415,5 +538,20 @@ export class AgentsPage {
   createAgent(): void {
     this.closeModal();
     this.toast.show('Agent created', 'success');
+  }
+
+  /** Flip the active flag on the agent currently open in the drawer. */
+  toggleStatus(): void {
+    const ca = this.configAgent();
+    if (!ca) return;
+    const next = { ...ca, active: !ca.active };
+    this.configAgent.set(next);
+    this.agents.update((list) => list.map((a) => (a.id === next.id ? next : a)));
+  }
+
+  /** Persist drawer edits (mock), confirm via toast, then close. */
+  saveConfig(): void {
+    this.toast.show('Agent configuration saved', 'success');
+    this.configAgent.set(null);
   }
 }
