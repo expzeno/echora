@@ -629,12 +629,16 @@ interface ApiKey {
       .set-shell { padding: 64px 16px 24px; }
       .set-body { flex-direction: column; }
       .set-nav {
-        flex: 1 1 auto; width: 100%; position: static;
-        flex-direction: row; flex-wrap: wrap; gap: 4px;
+        flex: 0 0 auto; width: 100%; position: static;
+        flex-direction: row; flex-wrap: nowrap; gap: 4px;
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
       }
+      .set-nav::-webkit-scrollbar { display: none; }
       .set-nav-item {
-        flex: 1 1 auto; text-align: center;
+        flex: 0 0 auto; width: auto; text-align: center; white-space: nowrap;
         border-left: none; border-bottom: 3px solid transparent;
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
       }
       .set-nav-item--active { border-left: none; border-bottom-color: var(--brand-primary); }
       .set-content { width: 100%; }

@@ -444,6 +444,9 @@ interface Contact {
       .ct-shell:not(.ct-shell--detail-open) .ct-detail { display: none; }
       .ct-back { display: inline-flex; align-items: center; justify-content: center; }
       .ct-stats { flex-direction: column; }
+      /* Clear the fixed mobile menu FAB (top 12px, 42px tall) so headers aren't overlapped. */
+      .ct-list-head { padding-top: 60px; }
+      .ct-detail-head { padding-top: 60px; }
     }
   `],
 })

@@ -370,6 +370,9 @@ interface ThreadMessage {
       .conv-shell:not(.conv-shell--detail-open) .conv-detail { display: none; }
       .conv-back { display: inline-flex; align-items: center; justify-content: center; }
       .conv-msg { max-width: 82%; }
+      /* Clear the fixed mobile menu FAB (top 12px, 42px tall) so headers aren't overlapped/clipped. */
+      .conv-list-head { padding-top: 60px; }
+      .conv-detail-head { padding-top: 60px; }
     }
   `],
 })
