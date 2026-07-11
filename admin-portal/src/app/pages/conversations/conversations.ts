@@ -18,7 +18,7 @@ interface MessageNewPayload {
   };
 }
 
-type ConvStatus = 'open' | 'pending' | 'resolved';
+type ConvStatus = 'open' | 'pending' | 'resolved' | 'closed';
 type ConvFilter = 'all' | 'open' | 'pending' | 'resolved';
 
 interface Conversation {
@@ -154,7 +154,16 @@ interface ThreadMessage {
                     [class.conv-mode-btn--active]="mode() === 'human'"
                     (click)="mode.set('human')">👤 Human</button>
                 </div>
-                <span class="conv-badge" [ngClass]="'conv-badge--' + selected()!.status">{{ selected()!.status }}</span>
+                <div class="conv-status-pills" role="group" aria-label="Conversation status">
+                  @for (s of statusOptions; track s.key) {
+                    <button
+                      class="conv-status-pill"
+                      [class.conv-status-pill--active]="selected()!.status === s.key"
+                      [attr.aria-pressed]="selected()!.status === s.key"
+                      [disabled]="statusUpdating()"
+                      (click)="setStatus(s.key)">{{ s.label }}</button>
+                  }
+                </div>
                 <button class="conv-back" (click)="select(null)" aria-label="Back to list">←</button>
               </div>
             </header>
@@ -325,6 +334,7 @@ interface ThreadMessage {
     .conv-dot--open { background: var(--status-live); box-shadow: 0 0 0 3px rgba(52,211,153,0.15); }
     .conv-dot--pending { background: var(--status-warn); box-shadow: 0 0 0 3px rgba(255,177,60,0.15); }
     .conv-dot--resolved { background: var(--admin-text-muted); }
+    .conv-dot--closed { background: var(--admin-text-muted); opacity: 0.5; }
 
     .conv-card-body { flex: 1; min-width: 0; }
     .conv-card-row {
@@ -404,6 +414,26 @@ interface ThreadMessage {
     .conv-badge--open { color: var(--status-live); background: rgba(52,211,153,0.14); }
     .conv-badge--pending { color: var(--status-warn); background: rgba(255,177,60,0.14); }
     .conv-badge--resolved { color: var(--admin-text-secondary); background: var(--surface-2); }
+
+    /* ── STATUS TRIAGE PILLS ──────────────────────────────────── */
+    .conv-status-pills {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 2px; border-radius: var(--radius-full);
+      background: var(--surface-2); border: 1px solid var(--border);
+    }
+    .conv-status-pill {
+      padding: 5px 11px; border: none; border-radius: var(--radius-full);
+      background: transparent; cursor: pointer;
+      font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
+      letter-spacing: 0.2px;
+      color: var(--admin-text-secondary);
+      transition: background .15s, color .15s;
+    }
+    .conv-status-pill:hover:not(:disabled) { color: var(--admin-text); }
+    .conv-status-pill--active {
+      background: var(--brand-secondary, #14B8A6); color: #fff;   /* Teal */
+    }
+    .conv-status-pill:disabled { cursor: default; opacity: 0.75; }
     .conv-back {
       display: none;
       width: 34px; height: 34px; border-radius: var(--radius-md);
@@ -609,11 +639,20 @@ export class ConversationsPage implements OnInit, OnDestroy {
     { key: 'resolved', label: 'Resolved' },
   ];
 
+  // Status triage options rendered as pills in the thread header.
+  readonly statusOptions: { key: ConvStatus; label: string }[] = [
+    { key: 'open', label: 'Open' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'resolved', label: 'Resolved' },
+    { key: 'closed', label: 'Closed' },
+  ];
+
   readonly query = signal('');
   readonly filter = signal<ConvFilter>('all');
   readonly selectedId = signal<string | null>(null);
   readonly draft = signal('');
   readonly mode = signal<'ai' | 'human'>('ai');
+  readonly statusUpdating = signal(false);
 
   // ── Thread state machine ──────────────────────────────────────
   // The real messaging service replaces the body of loadThread(); the
@@ -674,17 +713,17 @@ export class ConversationsPage implements OnInit, OnDestroy {
     };
   }
 
-  /** Backend statuses (open/pending/resolved/closed) → the 3 view buckets. */
+  /** Backend statuses (open/pending/resolved/closed) map 1:1 to the view model. */
   private normalizeStatus(s: string): ConvStatus {
-    if (s === 'open' || s === 'pending' || s === 'resolved') return s;
-    return 'resolved'; // closed → resolved bucket for display
+    if (s === 'open' || s === 'pending' || s === 'resolved' || s === 'closed') return s;
+    return 'open';
   }
 
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     const f = this.filter();
     return this.conversations()
-      .filter(c => f === 'all' || c.status === f)
+      .filter(c => this.matchesFilter(c.status, f))
       .filter(c => !q || c.customerPhone.includes(q) || c.preview.toLowerCase().includes(q))
       .sort((a, b) => b.lastMessageAt - a.lastMessageAt);
   });
@@ -729,9 +768,46 @@ export class ConversationsPage implements OnInit, OnDestroy {
     if (c) this.loadThread(c);
   }
 
+  /**
+   * Triage: change a conversation's status from the thread header pills.
+   * Optimistically updates the list (and, via `selected`, the header) so the
+   * active pill flips instantly, then reconciles / rolls back on the API result.
+   */
+  setStatus(status: ConvStatus): void {
+    const c = this.selected();
+    if (!c || c.status === status || this.statusUpdating()) return;
+
+    const prev = c.status;
+    this.statusUpdating.set(true);
+    this.conversations.update(list =>
+      list.map(x => (x.id === c.id ? { ...x, status } : x)),
+    );
+
+    this.api.updateStatus(c.id, status).subscribe({
+      next: () => {
+        this.statusUpdating.set(false);
+        this.toast.show(`Marked as ${status}`, 'success');
+      },
+      error: () => {
+        // Roll back the optimistic change and surface the failure.
+        this.conversations.update(list =>
+          list.map(x => (x.id === c.id ? { ...x, status: prev } : x)),
+        );
+        this.statusUpdating.set(false);
+        this.toast.show('Failed to update status', 'error');
+      },
+    });
+  }
+
+  /** Closed conversations fold into the Resolved tab; every status shows under All. */
+  private matchesFilter(status: ConvStatus, f: ConvFilter): boolean {
+    if (f === 'all') return true;
+    if (f === 'resolved') return status === 'resolved' || status === 'closed';
+    return status === f;
+  }
+
   countFor(f: ConvFilter): number {
-    if (f === 'all') return this.conversations().length;
-    return this.conversations().filter(c => c.status === f).length;
+    return this.conversations().filter(c => this.matchesFilter(c.status, f)).length;
   }
 
   select(id: string | null): void {
