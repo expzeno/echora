@@ -80,6 +80,10 @@ import { Global } from '../../services/global';
                     <ion-icon name="person-outline" />
                     <span>Agents</span>
                   </a>
+                  <a routerLink="/whatsapp-numbers" class="dash-action-btn">
+                    <ion-icon name="logo-whatsapp" />
+                    <span>WA Numbers</span>
+                  </a>
                 </div>
               </div>
             </div>
