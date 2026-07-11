@@ -62,8 +62,8 @@ ion-menu {
   .logo-fallback {
     width: 36px; height: 36px;
     align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 800; color: var(--ion-color-primary);
-    border-radius: 8px; background: rgba(99, 91, 255, 0.1);
+    font-size: 15px; font-weight: 800; color: var(--brand-primary);
+    border-radius: 8px; background: rgba(76, 79, 224, 0.12);
     letter-spacing: -0.3px;
   }
   .logo-text { font-size: 17px; font-weight: 700; color: var(--admin-text); letter-spacing: -0.3px; }
@@ -99,11 +99,14 @@ ion-menu {
   ion-icon { font-size: 16px; color: #94a3b8; margin-right: 8px; }
   ion-label { font-weight: 500; }
 
+  // Active nav — indigo-tinted panel + a resonant left rail on the dark ground.
+  // Chrome stays quiet; the one accent marks "you are here".
   &.selected {
-    --background: #f0efff;
-    color: #635bff;
+    --background: rgba(76, 79, 224, 0.14);
+    color: var(--brand-primary);
     font-weight: 600;
-    ion-icon { color: #635bff; }
+    box-shadow: inset 3px 0 0 var(--brand-primary);
+    ion-icon { color: var(--brand-primary); }
   }
 }
 
@@ -426,15 +429,15 @@ ion-content { --background: var(--admin-content-bg); }
   justify-content: center;
   gap: 12px;
   padding: 80px 0;
-  color: #94a3b8;
+  color: var(--admin-text-secondary);
   font-size: 14px;
 }
 
 .dash-loading-spinner {
   width: 20px;
   height: 20px;
-  border: 2.5px solid #e2e8f0;
-  border-top-color: #635bff;
+  border: 2.5px solid var(--admin-divider);
+  border-top-color: var(--brand-primary);
   border-radius: 50%;
   animation: dash-spin 0.6s linear infinite;
 }
@@ -461,12 +464,11 @@ ion-content { --background: var(--admin-content-bg); }
   &:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
 }
 
-// Primary/hero metric — visually elevated so stacked cards aren't uniform on mobile.
+// Primary/hero metric — the ONE echo per view (BRAND_GUIDE §3.1). Pulse Amber
+// left rail + amber KPI mark the single most important number on screen.
 .dash-stat-card--primary {
-  // Accent left border only — keep the default border on the other three sides
-  // so the card reads as "primary" without looking like a selected/active state.
-  border-left: 4px solid var(--ion-color-primary);
-  background: linear-gradient(135deg, rgba(99, 91, 255, 0.06), var(--admin-surface));
+  border-left: 4px solid var(--brand-accent);
+  background: linear-gradient(135deg, rgba(255, 177, 60, 0.06), var(--admin-surface));
   .dash-stat-value { font-size: 34px; }
 }
 
@@ -481,8 +483,20 @@ ion-content { --background: var(--admin-content-bg); }
   flex-shrink: 0;
 }
 
+// Brand-palette icon tints on the dark ground — indigo, teal, and the amber echo.
+.dash-stat-icon--echo   { background: rgba(255, 177, 60, 0.14); color: var(--brand-accent); }
+.dash-stat-icon--indigo { background: rgba(76, 79, 224, 0.16);  color: #8A8CF2; }
+.dash-stat-icon--teal   { background: rgba(34, 200, 192, 0.14); color: var(--brand-secondary); }
+
 .dash-stat-body { flex: 1; min-width: 0; }
-.dash-stat-value { font-size: 28px; font-weight: 700; color: var(--admin-text); letter-spacing: -0.5px; line-height: 1.1; }
+.dash-stat-value {
+  font-family: var(--font-display, 'Space Grotesk', 'Inter', system-ui, sans-serif);
+  font-size: 28px; font-weight: 700; color: var(--admin-text);
+  letter-spacing: -0.5px; line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+// The single amber echo — the standout KPI reads pre-attentively.
+.dash-stat-value--echo { color: var(--brand-accent); }
 .dash-stat-label { font-size: 13px; color: var(--admin-text-secondary); font-weight: 500; margin-top: 2px; }
 .dash-stat-sub { font-size: 12px; color: var(--admin-text-muted); width: 100%; padding-top: 8px; border-top: 1px solid var(--admin-divider); margin-top: 2px; }
 
@@ -534,8 +548,8 @@ ion-content { --background: var(--admin-content-bg); }
   font-weight: 500;
   transition: all 0.15s ease;
   cursor: pointer;
-  ion-icon { font-size: 22px; color: #635bff; }
-  &:hover { background: #f0efff; border-color: #c7d2fe; }
+  ion-icon { font-size: 22px; color: var(--brand-primary); }
+  &:hover { background: var(--admin-divider); border-color: var(--brand-primary); color: var(--admin-text); }
 }
 
 // ─── Empty State ───
@@ -653,7 +667,7 @@ body.dark-theme {
   .sidebar-item {
     color: #cbd5e1;
     --background-hover: #334155;
-    &.selected { --background: #1e1b4b; color: #a5b4fc; ion-icon { color: #a5b4fc; } }
+    &.selected { --background: rgba(76, 79, 224, 0.14); color: var(--brand-primary); box-shadow: inset 3px 0 0 var(--brand-primary); ion-icon { color: var(--brand-primary); } }
     ion-icon { color: #94a3b8; }
   }
   .section-label { color: #94a3b8; }
@@ -688,12 +702,13 @@ body.dark-theme {
   .detail-header { .back-btn { color: #94a3b8; } h1 { color: #f1f5f9; } }
   .detail-field { .field-label { color: #94a3b8; } .field-value { color: #f1f5f9; } }
 
-  .dash-header h1 { color: #f1f5f9; }
-  .dash-stat-card { background: #1e293b; border-color: #334155; }
-  .dash-stat-card--primary { border-color: #334155; border-left-color: var(--ion-color-primary); background: linear-gradient(135deg, rgba(99, 91, 255, 0.18), #1e293b); }
-  .dash-stat-value { color: #f1f5f9; }
-  .dash-panel-header { border-bottom-color: #334155; h2 { color: #f1f5f9; } }
-  .dash-action-btn { background: #1e293b; border-color: #334155; color: #cbd5e1; &:hover { background: #2d2463; border-color: #4338ca; } }
+  .dash-header h1 { color: var(--admin-text); }
+  .dash-stat-card { background: var(--admin-surface); border-color: var(--admin-border); }
+  .dash-stat-card--primary { border-color: var(--admin-border); border-left-color: var(--brand-accent); background: linear-gradient(135deg, rgba(255, 177, 60, 0.10), var(--admin-surface)); }
+  .dash-stat-value { color: var(--admin-text); }
+  .dash-stat-value--echo { color: var(--brand-accent); }
+  .dash-panel-header { border-bottom-color: var(--admin-border); h2 { color: var(--admin-text); } }
+  .dash-action-btn { background: var(--admin-bg); border-color: var(--admin-border); color: var(--admin-text-body); &:hover { background: var(--admin-divider); border-color: var(--brand-primary); } }
 
   // Login page is a self-contained brand hero (always Obsidian glass) — no theme override needed.
 

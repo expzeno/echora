@@ -15,7 +15,7 @@ import { Global } from '../../services/global';
       <div class="dash-header">
         <div>
           <h1>Welcome back{{ global.displayName() ? ', ' + global.displayName() : '' }}</h1>
-          <div class="subtitle">Here's what's happening on your platform today.</div>
+          <div class="subtitle">Your support console at a glance — every voice comes back answered.</div>
         </div>
         <div class="dash-date">{{ today | date: 'EEE, MMM d' }}</div>
       </div>
@@ -30,17 +30,17 @@ import { Global } from '../../services/global';
       @if (!loading()) {
         <div class="dash-stats-row">
           <div class="dash-stat-card dash-stat-card--primary">
-            <div class="dash-stat-icon" style="background: #ede9fe; color: #7c3aed;">
+            <div class="dash-stat-icon dash-stat-icon--echo">
               <ion-icon name="people-outline" />
             </div>
             <div class="dash-stat-body">
-              <div class="dash-stat-value">{{ stats().users?.total || 0 }}</div>
+              <div class="dash-stat-value dash-stat-value--echo">{{ stats().users?.total || 0 }}</div>
               <div class="dash-stat-label">Total Users</div>
             </div>
           </div>
 
           <div class="dash-stat-card">
-            <div class="dash-stat-icon" style="background: #dbeafe; color: #2563eb;">
+            <div class="dash-stat-icon dash-stat-icon--indigo">
               <ion-icon name="person-outline" />
             </div>
             <div class="dash-stat-body">
@@ -50,7 +50,7 @@ import { Global } from '../../services/global';
           </div>
 
           <div class="dash-stat-card">
-            <div class="dash-stat-icon" style="background: #d1fae5; color: #059669;">
+            <div class="dash-stat-icon dash-stat-icon--teal">
               <ion-icon name="storefront-outline" />
             </div>
             <div class="dash-stat-body">
