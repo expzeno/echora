@@ -169,7 +169,7 @@ interface ThreadMessage {
     .conv-list-head { padding: 20px 16px 8px; }
     .conv-title {
       font-family: var(--font-display);
-      font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
+      font-size: 24px; font-weight: 700; letter-spacing: -0.5px;
       color: var(--admin-text); margin: 0 0 14px;
     }
 

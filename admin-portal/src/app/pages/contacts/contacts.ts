@@ -198,7 +198,7 @@ interface Contact {
     .ct-list-head { padding: 20px 16px 8px; }
     .ct-title {
       font-family: var(--font-display);
-      font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
+      font-size: 24px; font-weight: 700; letter-spacing: -0.5px;
       color: var(--admin-text); margin: 0 0 14px;
     }
 
@@ -390,7 +390,7 @@ interface Contact {
     /* Sections */
     .ct-section { display: flex; flex-direction: column; gap: 10px; }
     .ct-section-title {
-      font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
       color: var(--admin-text-muted);
     }
 

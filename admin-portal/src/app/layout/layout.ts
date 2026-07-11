@@ -33,7 +33,6 @@ const DARK_MODE_KEY = 'ec_darkMode';
             <span class="logo-fallback" style="display:none;">Logo</span>
             <div>
               <span class="logo-text">Echora</span>
-              <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.5px;" [style.color]="isProd ? '#22c55e' : '#ef4444'">{{ isProd ? 'LIVE' : 'DEV' }}</div>
             </div>
           </div>
 

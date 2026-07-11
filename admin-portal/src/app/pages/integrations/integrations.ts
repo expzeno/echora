@@ -164,7 +164,7 @@ interface WebhookEvent {
     .int-section { margin-bottom: 32px; }
     .int-section-title {
       font-family: var(--font-display);
-      font-size: 13px; font-weight: 700; letter-spacing: 0.6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
       text-transform: uppercase;
       color: var(--admin-text-secondary); margin: 0 0 14px;
     }
