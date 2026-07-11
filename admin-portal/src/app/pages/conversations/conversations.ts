@@ -1,9 +1,22 @@
-import { Component, computed, signal, inject, OnInit } from '@angular/core';
+import { Component, computed, signal, inject, ElementRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { ConversationService, Conversation as ApiConversation, Message as ApiMessage } from '../../services/conversation.service';
+import { SocketService } from '../../services/socket.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
+
+// ── Socket.IO real-time payload (event: message:new) ─────────────────────────
+interface MessageNewPayload {
+  conversationId: string;
+  message: {
+    id: string;
+    direction: 'inbound' | 'outbound';
+    content: string | null;
+    createdAt: string;
+  };
+}
 
 type ConvStatus = 'open' | 'pending' | 'resolved';
 type ConvFilter = 'all' | 'open' | 'pending' | 'resolved';
@@ -577,9 +590,17 @@ interface ThreadMessage {
     }
   `],
 })
-export class ConversationsPage implements OnInit {
+export class ConversationsPage implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly api = inject(ConversationService);
+  private readonly socket = inject(SocketService);
+  private readonly host = inject(ElementRef<HTMLElement>);
+
+  // ── Real-time (Socket.IO) ─────────────────────────────────────
+  // The room currently joined (conversation:<id>) and the live subscription
+  // to message:new. Both are torn down whenever the selected thread changes.
+  private joinedRoom: string | null = null;
+  private messageSub: Subscription | null = null;
 
   readonly tabs: { key: ConvFilter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -714,6 +735,9 @@ export class ConversationsPage implements OnInit {
   }
 
   select(id: string | null): void {
+    // Leave any previously joined room before switching threads.
+    this.leaveRoom();
+
     this.selectedId.set(id);
     this.draft.set('');
     if (id) {
@@ -721,12 +745,68 @@ export class ConversationsPage implements OnInit {
         list.map(c => (c.id === id ? { ...c, unreadCount: 0 } : c)),
       );
       const c = this.conversations().find(x => x.id === id);
-      if (c) this.loadThread(c);
+      if (c) {
+        this.loadThread(c);
+        this.joinRoom(id);
+      }
     } else {
       this.messages.set([]);
       this.messagesLoading.set(false);
       this.messagesError.set(false);
     }
+  }
+
+  /** Join the conversation's Socket.IO room and start listening for new messages. */
+  private joinRoom(conversationId: string): void {
+    const room = `conversation:${conversationId}`;
+    this.socket.join(room);
+    this.joinedRoom = room;
+    this.messageSub = this.socket
+      .on<MessageNewPayload>('message:new')
+      .subscribe((payload) => this.onMessageNew(payload));
+  }
+
+  /** Leave the current room (if any) and drop the message:new subscription. */
+  private leaveRoom(): void {
+    this.messageSub?.unsubscribe();
+    this.messageSub = null;
+    if (this.joinedRoom) {
+      this.socket.leave(this.joinedRoom);
+      this.joinedRoom = null;
+    }
+  }
+
+  /**
+   * Append a real-time message to the open thread. Ignores events for other
+   * conversations and de-dupes against messages we already have (e.g. our own
+   * optimistic send that the server echoes back over the socket).
+   */
+  private onMessageNew(payload: MessageNewPayload): void {
+    if (!payload?.message || payload.conversationId !== this.selectedId()) return;
+    const incoming = this.toThreadMessage(payload.message as ApiMessage);
+    if (this.messages().some((m) => m.id === incoming.id)) return;
+    this.messages.update((list) => [...list, incoming]);
+    // Reflect the new message in the list preview + ordering.
+    this.conversations.update((list) =>
+      list.map((x) =>
+        x.id === payload.conversationId
+          ? { ...x, preview: incoming.body, lastMessageAt: incoming.at }
+          : x,
+      ),
+    );
+    this.scrollToBottom();
+  }
+
+  /** Scroll the message thread to the latest message after the DOM settles. */
+  private scrollToBottom(): void {
+    setTimeout(() => {
+      const thread = this.host.nativeElement.querySelector('.conv-thread');
+      if (thread) thread.scrollTop = thread.scrollHeight;
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.leaveRoom();
   }
 
   /** Enter submits; Shift+Enter inserts a newline. */
