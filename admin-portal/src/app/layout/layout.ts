@@ -131,13 +131,14 @@ export class LayoutComponent implements OnInit {
   menuOpen = false;
 
   managementItems = [
-    { label: 'Customers', url: '/customers', icon: 'people-outline', adminOnly: false },
-    { label: 'Merchants', url: '/merchants', icon: 'storefront-outline', adminOnly: false },
-    { label: 'Users', url: '/users', icon: 'person-outline', adminOnly: true },
-    { label: 'Storefront Customization', url: '/tokens', icon: 'color-palette-outline', adminOnly: false },
+    { label: 'Conversations', url: '/conversations', icon: 'chatbubbles-outline', adminOnly: false },
+    { label: 'Contacts', url: '/contacts', icon: 'people-outline', adminOnly: false },
+    { label: 'Agents', url: '/agents', icon: 'person-outline', adminOnly: true },
+    { label: 'WhatsApp Numbers', url: '/whatsapp-numbers', icon: 'logo-whatsapp', adminOnly: true },
   ];
 
   systemItems = [
+    { label: 'Integrations', url: '/integrations', icon: 'git-branch-outline', adminOnly: true },
     { label: 'Settings', url: '/settings', icon: 'settings-outline', adminOnly: true },
   ];
 

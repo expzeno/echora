@@ -31,11 +31,11 @@ import { Global } from '../../services/global';
         <div class="dash-stats-row">
           <div class="dash-stat-card dash-stat-card--primary">
             <div class="dash-stat-icon dash-stat-icon--echo">
-              <ion-icon name="people-outline" />
+              <ion-icon name="chatbubbles-outline" />
             </div>
             <div class="dash-stat-body">
-              <div class="dash-stat-value dash-stat-value--echo">{{ stats().users?.total || 0 }}</div>
-              <div class="dash-stat-label">Total Users</div>
+              <div class="dash-stat-value dash-stat-value--echo">{{ stats().conversations?.open || 0 }}</div>
+              <div class="dash-stat-label">Open Conversations</div>
             </div>
           </div>
 
@@ -44,18 +44,18 @@ import { Global } from '../../services/global';
               <ion-icon name="person-outline" />
             </div>
             <div class="dash-stat-body">
-              <div class="dash-stat-value">{{ stats().customers?.total || 0 }}</div>
-              <div class="dash-stat-label">Customers</div>
+              <div class="dash-stat-value">{{ stats().agents?.online || 0 }}</div>
+              <div class="dash-stat-label">Active Agents</div>
             </div>
           </div>
 
           <div class="dash-stat-card">
             <div class="dash-stat-icon dash-stat-icon--teal">
-              <ion-icon name="storefront-outline" />
+              <ion-icon name="chatbox-outline" />
             </div>
             <div class="dash-stat-body">
-              <div class="dash-stat-value">{{ stats().merchants?.total || 0 }}</div>
-              <div class="dash-stat-label">Merchants</div>
+              <div class="dash-stat-value">{{ stats().messages?.today || 0 }}</div>
+              <div class="dash-stat-label">Messages Today</div>
             </div>
           </div>
         </div>
@@ -68,17 +68,17 @@ import { Global } from '../../services/global';
               </div>
               <div class="dash-panel-body">
                 <div class="dash-actions">
-                  <a routerLink="/users" class="dash-action-btn">
+                  <a routerLink="/conversations" class="dash-action-btn">
+                    <ion-icon name="chatbubbles-outline" />
+                    <span>Inbox</span>
+                  </a>
+                  <a routerLink="/contacts" class="dash-action-btn">
                     <ion-icon name="people-outline" />
-                    <span>Users</span>
+                    <span>Contacts</span>
                   </a>
-                  <a routerLink="/customers" class="dash-action-btn">
+                  <a routerLink="/agents" class="dash-action-btn">
                     <ion-icon name="person-outline" />
-                    <span>Customers</span>
-                  </a>
-                  <a routerLink="/merchants" class="dash-action-btn">
-                    <ion-icon name="storefront-outline" />
-                    <span>Merchants</span>
+                    <span>Agents</span>
                   </a>
                 </div>
               </div>
