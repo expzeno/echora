@@ -1,0 +1,11 @@
+{
+  "project": "echora",
+  "shortcode": "ec",
+  "workstreams": {
+    "main": {
+      "cwd": ".",
+      "status": "pending",
+      "purpose": "echora main agent"
+    }
+  }
+}
