@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/logs-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("LOGS_DATABASE_URL")
+}
+
+model ModelLog {
+  id          BigInt   @id @default(autoincrement())
+  op          String
+  docType     String   @map("doc_type")
+  docId       Int?     @map("doc_id")
+  profileType String?  @map("profile_type")
+  profileId   Int?     @map("profile_id")
+  before      Json?
+  after       Json?
+  at          DateTime
+
+  @@index([docType, docId])
+  @@index([profileType, profileId])
+  @@index([at])
+  @@map("model_logs")
+}
+
+model ApiAccessLog {
+  id          BigInt   @id @default(autoincrement())
+  profileType String?  @map("profile_type")
+  profileId   Int?     @map("profile_id")
+  method      String?
+  path        String?
+  statusCode  Int?     @map("status_code")
+  ip          String?  @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.VarChar(200)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([profileType, profileId])
+  @@index([createdAt])
+  @@map("api_access_logs")
+}
+
+model WebhookLog {
+  id        BigInt   @id @default(autoincrement())
+  source    String
+  event     String?
+  payload   Json?
+  status    String   @default("received")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([source])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}

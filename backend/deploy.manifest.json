@@ -1,0 +1,55 @@
+{
+  "system": {
+    "required": [
+      { "bin": "git", "version": ">=2.30.0", "install": "apt install -y git" },
+      { "bin": "node", "version": ">=22.0.0", "install": "nvm install 22" },
+      { "bin": "npm", "version": ">=10.0.0", "install": "comes with node" },
+      { "bin": "pm2", "version": ">=5.0.0", "install": "npm install -g pm2" },
+      { "bin": "nginx", "version": ">=1.18.0", "install": "apt install -y nginx" }
+    ],
+    "services": {
+      "sandbox": [
+        { "name": "postgresql", "version": ">=14", "required": true, "location": "local", "check": "pg_isready" },
+        { "name": "redis", "version": ">=7", "required": true, "location": "local", "check": "redis-cli ping" },
+        { "name": "nginx", "version": ">=1.18", "required": true, "location": "local", "check": "nginx -v" }
+      ],
+      "production": [
+        { "name": "postgresql", "version": ">=14", "required": true, "location": "remote", "note": "GCP Cloud SQL" },
+        { "name": "redis", "version": ">=7", "required": true, "location": "local", "check": "redis-cli ping" },
+        { "name": "nginx", "version": ">=1.18", "required": true, "location": "local", "check": "nginx -v" }
+      ]
+    }
+  },
+
+  "processes": [
+    {
+      "name": "echora-api",
+      "script": "src/server.js",
+      "port": "37600",
+      "env": {},
+      "instances": { "sandbox": 1, "production": 2 },
+      "description": "Main API server"
+    },
+    {
+      "name": "echora-log-worker",
+      "script": "src/workers/logWorker.js",
+      "port": null,
+      "env": {},
+      "instances": { "sandbox": 1, "production": 1 },
+      "description": "Audit/access log writer (BullMQ consumer)"
+    }
+  ],
+
+  "nginx": {
+    "sites": [
+      {
+        "subdomain": "apiec",
+        "type": "reverse-proxy",
+        "upstream": "http://127.0.0.1:37600",
+        "ssl": true
+      }
+    ]
+  },
+
+  "secrets": "secrets.manifest.json"
+}

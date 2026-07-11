@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.pem
+keys/
+feedback.json
+feedback-screenshots/
+dist/
+tests/reports/*.json

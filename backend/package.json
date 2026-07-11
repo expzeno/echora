@@ -1,0 +1,53 @@
+{
+  "name": "echora-api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "worker": "node src/workers/logWorker.js",
+    "test": "vitest run --config tests/vitest.config.js",
+    "test:api:sandbox": "bash tests/run-pz.sh",
+    "db:migrate": "npx prisma migrate deploy --schema prisma/main/schema.prisma",
+    "db:migrate:logs": "npx prisma migrate deploy --schema prisma/logs/schema.prisma",
+    "db:generate": "npx prisma generate --schema prisma/main/schema.prisma && npx prisma generate --schema prisma/logs/schema.prisma",
+    "db:studio": "npx prisma studio --schema prisma/main/schema.prisma",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.0.0",
+    "compression": "^1.7.4",
+    "cos-nodejs-sdk-v5": "^2.15.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0",
+    "express-rate-limit": "^7.0.0",
+    "rate-limit-redis": "^5.0.0",
+    "helmet": "^7.0.0",
+    "ioredis": "^5.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.10.0",
+    "file-type": "^22.0.0",
+    "multer": "^2.0.0",
+    "sharp": "^0.33.0",
+    "pino": "^9.0.0",
+    "pino-http": "^10.0.0",
+    "nodemailer": "^6.9.0",
+    "redis": "^4.6.0",
+    "ws": "^8.16.0",
+    "zod": "^3.23.0",
+    "google-auth-library": "^9.0.0",
+    "apple-signin-auth": "^1.7.0"
+  },
+  "optionalDependencies": {
+    "@google-cloud/secret-manager": "^5.0.0"
+  },
+  "devDependencies": {
+    "axios": "^1.7.0",
+    "eslint": "^9.0.0",
+    "vitest": "^2.0.0",
+    "prisma": "^6.0.0"
+  }
+}

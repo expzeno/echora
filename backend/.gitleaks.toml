@@ -1,0 +1,16 @@
+title = "echora gitleaks config"
+
+[allowlist]
+description = "Project-level allowlist"
+
+[[allowlist.paths]]
+description = "Placeholder values in example files — not real secrets"
+paths = [".env.example", "secrets.manifest.json"]
+
+[[allowlist.paths]]
+description = "Public CyberZeno browser token — intentionally in source"
+paths = ["**/environment.ts", "**/environment.sandbox.ts"]
+
+[[allowlist.paths]]
+description = "Feedback entries may contain user-submitted text that looks like tokens"
+paths = ["feedback.json"]

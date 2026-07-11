@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "project": "echora",
+  "suites": [
+    {
+      "name": "api",
+      "runner": "vitest",
+      "component": ["."],
+      "devDepsPath": ".",
+      "command": {
+        "sandbox": "bash tests/run-pz.sh",
+        "production": null
+      },
+      "env": {
+        "DATABASE_URL": { "fromVault": "EC_TEST_DB_URL", "default": "postgresql://server_tridentity_me@localhost:5432/echora_sand" },
+        "TEST_API_BASE": "http://localhost:37600"
+      },
+      "reporter": "pz-json",
+      "timeoutSeconds": 300,
+      "required": true
+    }
+  ]
+}
