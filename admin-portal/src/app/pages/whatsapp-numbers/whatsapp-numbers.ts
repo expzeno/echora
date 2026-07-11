@@ -62,9 +62,9 @@ interface WhatsAppNumber {
                 </div>
 
                 <div class="wa-actions">
-                  <button class="wa-link" type="button">Rename</button>
-                  <button class="wa-link" type="button">{{ n.active ? 'Deactivate' : 'Activate' }}</button>
-                  <button class="wa-link wa-link--danger" type="button">Delete</button>
+                  <button class="wa-link" type="button" (click)="startRename(n)">Rename</button>
+                  <button class="wa-link" type="button" (click)="toggleActive(n)">{{ n.active ? 'Deactivate' : 'Activate' }}</button>
+                  <button class="wa-link wa-link--danger" type="button" (click)="pendingDelete.set(n)">Delete</button>
                 </div>
               </div>
             }
@@ -135,6 +135,54 @@ interface WhatsAppNumber {
               <div class="wa-modal-actions">
                 <button class="wa-btn wa-btn--ghost" type="button" (click)="closeModal()">Cancel</button>
                 <button class="wa-btn wa-btn--primary" type="button" (click)="connectNumber()">Connect</button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ── RENAME MODAL ────────────────────────────────────────── -->
+        @if (renameTarget(); as rt) {
+          <div class="wa-backdrop" (click)="cancelRename()">
+            <div class="wa-modal wa-modal--sm" (click)="$event.stopPropagation()" role="dialog" aria-modal="true"
+                 aria-labelledby="wa-rename-title">
+              <button class="wa-modal-close" type="button" (click)="cancelRename()" aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+              </button>
+              <h2 id="wa-rename-title" class="wa-modal-title">Rename Inbox</h2>
+              <div class="wa-field">
+                <label class="wa-field-label" for="wa-rename-input">Label</label>
+                <input
+                  id="wa-rename-input"
+                  class="wa-input wa-input--text"
+                  type="text"
+                  [ngModel]="renameInput()"
+                  (ngModelChange)="renameInput.set($event)"
+                  (keyup.enter)="saveRename()"
+                  placeholder="e.g. Support Line" />
+              </div>
+              <div class="wa-modal-actions">
+                <button class="wa-btn wa-btn--ghost" type="button" (click)="cancelRename()">Cancel</button>
+                <button class="wa-btn wa-btn--primary" type="button" [disabled]="!renameInput().trim()"
+                        (click)="saveRename()">Save</button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ── DELETE CONFIRM ──────────────────────────────────────── -->
+        @if (pendingDelete(); as pd) {
+          <div class="wa-backdrop" (click)="pendingDelete.set(null)">
+            <div class="wa-modal wa-modal--sm" (click)="$event.stopPropagation()" role="dialog" aria-modal="true"
+                 aria-labelledby="wa-del-title">
+              <h2 id="wa-del-title" class="wa-modal-title">Remove number?</h2>
+              <p class="wa-confirm-text">
+                <strong>{{ pd.phone }}</strong> ({{ pd.label }}) will be disconnected and its inbox removed. This can’t be undone.
+              </p>
+              <div class="wa-modal-actions">
+                <button class="wa-btn wa-btn--ghost" type="button" (click)="pendingDelete.set(null)">Cancel</button>
+                <button class="wa-btn wa-btn--danger" type="button" (click)="deleteNumber(pd)">Remove Number</button>
               </div>
             </div>
           </div>
@@ -341,6 +389,20 @@ interface WhatsAppNumber {
     .wa-modal-actions {
       display: flex; justify-content: flex-end; gap: 10px;
     }
+    .wa-btn:disabled { opacity: .5; cursor: not-allowed; filter: none; box-shadow: none; }
+    .wa-modal--sm { width: 420px; }
+    .wa-input--text { font-family: var(--font-body); }
+    .wa-confirm-text {
+      font-size: 14px; line-height: 1.55; color: var(--admin-text-secondary);
+      margin: 0 0 22px;
+    }
+    .wa-confirm-text strong { color: var(--admin-text); font-weight: 600; font-family: var(--font-mono); }
+    .wa-btn--danger {
+      background: var(--status-urgent); color: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .wa-btn--danger:hover { filter: brightness(1.08); box-shadow: 0 4px 14px rgba(240,85,107,0.3); }
+    .wa-btn--danger:active { filter: brightness(0.96); }
 
     /* ── responsive ───────────────────────────────────────────── */
     @media (max-width: 767px) {
@@ -360,6 +422,13 @@ export class WhatsAppNumbersPage {
   readonly modalOpen = signal(false);
   readonly phoneInput = signal('');
 
+  // rename modal target + draft label
+  readonly renameTarget = signal<WhatsAppNumber | null>(null);
+  readonly renameInput = signal('');
+
+  // number queued for deletion (null = confirm modal closed)
+  readonly pendingDelete = signal<WhatsAppNumber | null>(null);
+
   readonly numbers = signal<WhatsAppNumber[]>([
     { id: 'n1', phone: '+60 12-345 6789', label: 'Support Line', active: true, lastActivity: '2 hours ago' },
     { id: 'n2', phone: '+60 19-876 5432', label: 'Sales Inbox', active: false, lastActivity: '3 days ago' },
@@ -371,5 +440,36 @@ export class WhatsAppNumbersPage {
   connectNumber(): void {
     this.closeModal();
     this.toast.show('Number connected', 'success');
+  }
+
+  /** Flip active state from the list card + confirm via toast. */
+  toggleActive(n: WhatsAppNumber): void {
+    const next = { ...n, active: !n.active };
+    this.numbers.update((list) => list.map((x) => (x.id === n.id ? next : x)));
+    this.toast.show(next.active ? `${n.label} activated` : `${n.label} deactivated`, 'success');
+  }
+
+  /** Open the rename modal pre-filled with the current label. */
+  startRename(n: WhatsAppNumber): void {
+    this.renameInput.set(n.label);
+    this.renameTarget.set(n);
+  }
+  cancelRename(): void { this.renameTarget.set(null); }
+
+  saveRename(): void {
+    const target = this.renameTarget();
+    const label = this.renameInput().trim();
+    if (!target || !label) return;
+    this.numbers.update((list) => list.map((x) => (x.id === target.id ? { ...x, label } : x)));
+    this.renameTarget.set(null);
+    this.toast.show('Inbox renamed', 'success');
+  }
+
+  /** Remove the number queued in pendingDelete, toast, and close the confirm. */
+  deleteNumber(n: WhatsAppNumber): void {
+    this.numbers.update((list) => list.filter((x) => x.id !== n.id));
+    this.pendingDelete.set(null);
+    this.showList.set(this.numbers().length > 0);
+    this.toast.show('Number removed', 'success');
   }
 }

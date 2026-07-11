@@ -74,8 +74,8 @@ interface Agent {
 
                 <div class="ag-actions">
                   <button class="ag-btn ag-btn--outline" type="button" (click)="configAgent.set(a)">Configure</button>
-                  <button class="ag-link" type="button">{{ a.active ? 'Deactivate' : 'Activate' }}</button>
-                  <button class="ag-link ag-link--danger" type="button">Delete</button>
+                  <button class="ag-link" type="button" (click)="toggleActive(a)">{{ a.active ? 'Deactivate' : 'Activate' }}</button>
+                  <button class="ag-link ag-link--danger" type="button" (click)="pendingDelete.set(a)">Delete</button>
                 </div>
               </div>
             }
@@ -169,6 +169,23 @@ interface Agent {
               <div class="ag-modal-actions">
                 <button class="ag-btn ag-btn--ghost" type="button" (click)="closeModal()">Cancel</button>
                 <button class="ag-btn ag-btn--primary" type="button" (click)="createAgent()">Create</button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ── DELETE CONFIRM ───────────────────────────────────────── -->
+        @if (pendingDelete(); as pd) {
+          <div class="ag-backdrop" (click)="pendingDelete.set(null)">
+            <div class="ag-modal ag-modal--sm" (click)="$event.stopPropagation()" role="dialog" aria-modal="true"
+                 aria-labelledby="ag-del-title">
+              <h2 id="ag-del-title" class="ag-modal-title">Delete agent?</h2>
+              <p class="ag-confirm-text">
+                <strong>{{ pd.name }}</strong> and its configuration will be permanently removed. This can’t be undone.
+              </p>
+              <div class="ag-modal-actions">
+                <button class="ag-btn ag-btn--ghost" type="button" (click)="pendingDelete.set(null)">Cancel</button>
+                <button class="ag-btn ag-btn--danger" type="button" (click)="deleteAgent(pd)">Delete Agent</button>
               </div>
             </div>
           </div>
@@ -445,6 +462,18 @@ interface Agent {
     .ag-modal-actions {
       display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;
     }
+    .ag-modal--sm { width: 420px; }
+    .ag-confirm-text {
+      font-size: 14px; line-height: 1.55; color: var(--admin-text-secondary);
+      margin: 0 0 22px;
+    }
+    .ag-confirm-text strong { color: var(--admin-text); font-weight: 600; }
+    .ag-btn--danger {
+      background: var(--status-urgent); color: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .ag-btn--danger:hover { filter: brightness(1.08); box-shadow: 0 4px 14px rgba(240,85,107,0.3); }
+    .ag-btn--danger:active { filter: brightness(0.96); }
 
     /* ── configure drawer ─────────────────────────────────────── */
     .ag-drawer-backdrop {
@@ -519,6 +548,9 @@ export class AgentsPage {
   // which agent is being configured (null = drawer closed)
   readonly configAgent = signal<Agent | null>(null);
 
+  // agent queued for deletion (null = confirm modal closed)
+  readonly pendingDelete = signal<Agent | null>(null);
+
   // create-form fields
   readonly nameInput = signal('');
   readonly numberInput = signal('');
@@ -553,5 +585,21 @@ export class AgentsPage {
   saveConfig(): void {
     this.toast.show('Agent configuration saved', 'success');
     this.configAgent.set(null);
+  }
+
+  /** Flip active state from the list card + confirm via toast. */
+  toggleActive(a: Agent): void {
+    const next = { ...a, active: !a.active };
+    this.agents.update((list) => list.map((x) => (x.id === a.id ? next : x)));
+    this.toast.show(next.active ? `${a.name} activated` : `${a.name} deactivated`, 'success');
+  }
+
+  /** Remove the agent queued in pendingDelete, toast, and close the confirm. */
+  deleteAgent(a: Agent): void {
+    this.agents.update((list) => list.filter((x) => x.id !== a.id));
+    this.pendingDelete.set(null);
+    if (this.configAgent()?.id === a.id) this.configAgent.set(null);
+    this.showList.set(this.agents().length > 0);
+    this.toast.show(`${a.name} deleted`, 'success');
   }
 }
