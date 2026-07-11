@@ -1,5 +1,6 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -111,7 +112,7 @@ interface ApiKey {
                 </div>
 
                 <div class="set-panel-actions">
-                  <button class="set-btn set-btn--primary" type="button">Save Changes</button>
+                  <button class="set-btn set-btn--primary" type="button" (click)="save()">Save Changes</button>
                 </div>
               </section>
             }
@@ -652,6 +653,12 @@ interface ApiKey {
   `],
 })
 export class SettingsPage {
+  private readonly toast = inject(ToastService);
+
+  save(): void {
+    this.toast.show('Settings saved', 'success');
+  }
+
   readonly tabs: NavTab[] = [
     { id: 'general', label: 'General' },
     { id: 'team', label: 'Team' },

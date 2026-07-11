@@ -1,5 +1,6 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -377,6 +378,8 @@ interface ThreadMessage {
   `],
 })
 export class ConversationsPage {
+  private readonly toast = inject(ToastService);
+
   readonly tabs: { key: ConvFilter; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'open', label: 'Open' },
@@ -442,6 +445,7 @@ export class ConversationsPage {
   send(): void {
     // Placeholder — outbound send is wired with the messaging service.
     this.draft.set('');
+    this.toast.show('Message sent', 'success');
   }
 
   /** Mask to +60 1X XXX XXXX, keeping country code + first mobile digit visible. */

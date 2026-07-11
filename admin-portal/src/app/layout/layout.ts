@@ -11,6 +11,7 @@ import * as allIcons from 'ionicons/icons';
 import { Preferences } from '@capacitor/preferences';
 import { AuthService } from '../services/auth.service';
 import { Global } from '../services/global';
+import { ToastComponent } from '../components/toast/toast.component';
 import { environment } from '../../environments/environment';
 
 const DARK_MODE_KEY = 'ec_darkMode';
@@ -22,6 +23,7 @@ const DARK_MODE_KEY = 'ec_darkMode';
     CommonModule, RouterLink, RouterLinkActive,
     IonSplitPane, IonMenu, IonContent,
     IonItem, IonIcon, IonLabel, IonMenuToggle, IonRouterOutlet,
+    ToastComponent,
   ],
   template: `
     <ion-split-pane contentId="main-content" [when]="'md'">
@@ -95,6 +97,8 @@ const DARK_MODE_KEY = 'ec_darkMode';
     <button class="mobile-menu-fab" (click)="toggleMenu()" type="button">
       <ion-icon [name]="menuOpen ? 'close-outline' : 'menu-outline'" />
     </button>
+
+    <app-toast />
   `,
   styles: [`
     .mobile-menu-fab {

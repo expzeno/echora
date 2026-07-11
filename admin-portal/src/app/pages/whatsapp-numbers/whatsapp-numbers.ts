@@ -1,5 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -133,7 +134,7 @@ interface WhatsAppNumber {
 
               <div class="wa-modal-actions">
                 <button class="wa-btn wa-btn--ghost" type="button" (click)="closeModal()">Cancel</button>
-                <button class="wa-btn wa-btn--primary" type="button" (click)="closeModal()">Connect</button>
+                <button class="wa-btn wa-btn--primary" type="button" (click)="connectNumber()">Connect</button>
               </div>
             </div>
           </div>
@@ -352,6 +353,8 @@ interface WhatsAppNumber {
   `],
 })
 export class WhatsAppNumbersPage {
+  private readonly toast = inject(ToastService);
+
   // Show STATE B (list) by default per spec; modal hidden by default.
   readonly showList = signal(true);
   readonly modalOpen = signal(false);
@@ -364,4 +367,9 @@ export class WhatsAppNumbersPage {
 
   openModal(): void { this.modalOpen.set(true); }
   closeModal(): void { this.modalOpen.set(false); }
+
+  connectNumber(): void {
+    this.closeModal();
+    this.toast.show('Number connected', 'success');
+  }
 }

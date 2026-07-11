@@ -1,5 +1,6 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -451,6 +452,8 @@ interface Contact {
   `],
 })
 export class ContactsPage {
+  private readonly toast = inject(ToastService);
+
   readonly tagTabs: { key: TagFilter; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'customer', label: 'Customer' },
@@ -539,6 +542,7 @@ export class ContactsPage {
   saveNote(): void {
     // Placeholder — note persistence is wired with the CRM service.
     this.note.set('');
+    this.toast.show('Note saved', 'success');
   }
 
   initials(name: string): string {

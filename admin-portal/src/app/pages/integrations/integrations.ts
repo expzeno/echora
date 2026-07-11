@@ -1,5 +1,6 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -331,6 +332,8 @@ interface WebhookEvent {
   `],
 })
 export class IntegrationsPage {
+  private readonly toast = inject(ToastService);
+
   /** ids of currently-connected integrations */
   private readonly connected = signal<Set<string>>(new Set(['hubspot', 'slack']));
 
@@ -363,11 +366,16 @@ export class IntegrationsPage {
   }
 
   toggle(id: string): void {
+    const willConnect = !this.connected().has(id);
     this.connected.update(set => {
       const next = new Set(set);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+    this.toast.show(
+      willConnect ? 'Integration connected' : 'Integration disconnected',
+      'success',
+    );
   }
 
   regenerate(): void {

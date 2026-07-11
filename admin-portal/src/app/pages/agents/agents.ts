@@ -1,5 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -166,7 +167,7 @@ interface Agent {
 
               <div class="ag-modal-actions">
                 <button class="ag-btn ag-btn--ghost" type="button" (click)="closeModal()">Cancel</button>
-                <button class="ag-btn ag-btn--primary" type="button" (click)="closeModal()">Create</button>
+                <button class="ag-btn ag-btn--primary" type="button" (click)="createAgent()">Create</button>
               </div>
             </div>
           </div>
@@ -391,6 +392,8 @@ interface Agent {
   `],
 })
 export class AgentsPage {
+  private readonly toast = inject(ToastService);
+
   // Show STATE B (list) by default per spec; modal hidden by default.
   readonly showList = signal(true);
   readonly modalOpen = signal(false);
@@ -408,4 +411,9 @@ export class AgentsPage {
 
   openModal(): void { this.modalOpen.set(true); }
   closeModal(): void { this.modalOpen.set(false); }
+
+  createAgent(): void {
+    this.closeModal();
+    this.toast.show('Agent created', 'success');
+  }
 }
