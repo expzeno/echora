@@ -1,6 +1,7 @@
-import { Component, computed, signal, inject } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../services/toast.service';
+import { ConversationService, Conversation as ApiConversation, Message as ApiMessage } from '../../services/conversation.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 
@@ -67,6 +68,14 @@ interface ThreadMessage {
           </div>
 
           <div class="conv-cards">
+            @if (listLoading()) {
+              <div class="conv-empty-list">Loading conversations…</div>
+            } @else if (listError()) {
+              <div class="conv-empty-list">
+                Couldn't load conversations.
+                <button class="conv-retry conv-retry--sm" (click)="loadConversations()">Retry</button>
+              </div>
+            } @else {
             @for (c of filtered(); track c.id) {
               <button
                 class="conv-card"
@@ -88,6 +97,7 @@ interface ThreadMessage {
               </button>
             } @empty {
               <div class="conv-empty-list">No conversations match.</div>
+            }
             }
           </div>
         </aside>
@@ -330,6 +340,9 @@ interface ThreadMessage {
       padding: 32px 12px; text-align: center;
       font-size: 13px; color: var(--admin-text-muted);
     }
+    .conv-retry--sm {
+      display: block; margin: 12px auto 0; padding: 7px 16px; font-size: 12.5px;
+    }
 
     /* ── RIGHT DETAIL ─────────────────────────────────────────── */
     .conv-detail {
@@ -564,8 +577,9 @@ interface ThreadMessage {
     }
   `],
 })
-export class ConversationsPage {
+export class ConversationsPage implements OnInit {
   private readonly toast = inject(ToastService);
+  private readonly api = inject(ConversationService);
 
   readonly tabs: { key: ConvFilter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -599,16 +613,51 @@ export class ConversationsPage {
   private loadSeq = 0;
   private localSeq = 0;
 
-  // Placeholder data — real inbox wiring lands with the messaging service.
-  private readonly now = Date.now();
-  readonly conversations = signal<Conversation[]>([
-    { id: 'c1', customerPhone: '+60123456789', preview: 'Hi, is my order shipped yet?', status: 'open', unreadCount: 3, assignedAgent: 'Aisha', lastMessageAt: this.now - 2 * 60_000 },
-    { id: 'c2', customerPhone: '+60198887766', preview: 'Thanks! That resolved it.', status: 'resolved', unreadCount: 0, assignedAgent: 'Ravi', lastMessageAt: this.now - 55 * 60_000 },
-    { id: 'c3', customerPhone: '+60171234567', preview: 'Waiting on the refund confirmation…', status: 'pending', unreadCount: 1, assignedAgent: null, lastMessageAt: this.now - 20 * 60_000 },
-    { id: 'c4', customerPhone: '+60126549870', preview: 'Can I change my delivery address?', status: 'open', unreadCount: 0, assignedAgent: 'Aisha', lastMessageAt: this.now - 3 * 3_600_000 },
-    { id: 'c5', customerPhone: '+60112233445', preview: 'The link you sent is broken.', status: 'pending', unreadCount: 5, assignedAgent: null, lastMessageAt: this.now - 8 * 60_000 },
-    { id: 'c6', customerPhone: '+60189998877', preview: 'Perfect, appreciate the quick help.', status: 'resolved', unreadCount: 0, assignedAgent: 'Ravi', lastMessageAt: this.now - 26 * 3_600_000 },
-  ]);
+  // ── Conversation list state ───────────────────────────────────
+  readonly conversations = signal<Conversation[]>([]);
+  readonly listLoading = signal(false);
+  readonly listError = signal(false);
+
+  ngOnInit(): void {
+    this.loadConversations();
+  }
+
+  /** Fetch the conversation list from the API and map into the view model. */
+  loadConversations(): void {
+    this.listError.set(false);
+    this.listLoading.set(true);
+    this.api.getConversations({ page: 1, limit: 50 }).subscribe({
+      next: ({ data }) => {
+        this.conversations.set(data.map((c) => this.toViewConversation(c)));
+        this.listLoading.set(false);
+      },
+      error: () => {
+        this.listLoading.set(false);
+        this.listError.set(true);
+      },
+    });
+  }
+
+  /** Map an API conversation into the local list view model. */
+  private toViewConversation(c: ApiConversation): Conversation {
+    const status = this.normalizeStatus(c.status);
+    const ts = c.lastMessageAt || c.updatedAt || c.createdAt;
+    return {
+      id: c.id,
+      customerPhone: c.contact?.phone_number || 'Unknown',
+      preview: c.lastMessage?.content || 'No messages yet',
+      status,
+      unreadCount: c.unreadCount ?? 0,
+      assignedAgent: null,
+      lastMessageAt: ts ? Date.parse(ts) : Date.now(),
+    };
+  }
+
+  /** Backend statuses (open/pending/resolved/closed) → the 3 view buckets. */
+  private normalizeStatus(s: string): ConvStatus {
+    if (s === 'open' || s === 'pending' || s === 'resolved') return s;
+    return 'resolved'; // closed → resolved bucket for display
+  }
 
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
@@ -623,34 +672,35 @@ export class ConversationsPage {
     this.conversations().find(c => c.id === this.selectedId()) ?? null,
   );
 
-  /** Placeholder thread — swapped for the messaging-service fetch in loadThread(). */
-  private mockThread(c: Conversation): ThreadMessage[] {
-    return [
-      { id: 'm1', from: 'customer', body: 'Hi, I need help with my order', at: c.lastMessageAt - 12 * 60_000 },
-      { id: 'm2', from: 'ai', body: "Hello! I'm Echora AI. I can help you with that. Could you share your order number?", at: c.lastMessageAt - 10 * 60_000 },
-      { id: 'm3', from: 'customer', body: "It's ORDER-4821", at: c.lastMessageAt - 8 * 60_000 },
-      { id: 'm4', from: 'ai', body: 'Found it! Your order is currently being processed and will ship within 24 hours.', at: c.lastMessageAt - 6 * 60_000 },
-      { id: 'm5', from: 'human', body: "Just jumping in — I've escalated this to our warehouse team. You'll get an update by EOD.", at: c.lastMessageAt - 2 * 60_000 },
-    ];
+  /** Map an API message into the local thread view model. */
+  private toThreadMessage(m: ApiMessage): ThreadMessage {
+    return {
+      id: m.id,
+      from: m.direction === 'inbound' ? 'customer' : 'human',
+      body: m.content || '',
+      at: m.createdAt ? Date.parse(m.createdAt) : Date.now(),
+    };
   }
 
-  /**
-   * Load the thread for a conversation. Currently resolves mock data after a
-   * short simulated latency so the skeleton/empty/error states render as they
-   * will with the live API. Real wiring: replace the setTimeout body with
-   * `this.api.getMessages(c.id).subscribe({ next, error })`.
-   */
+  /** Load the message thread for a conversation from the API. */
   private loadThread(c: Conversation): void {
     const seq = ++this.loadSeq;
     this.messagesError.set(false);
     this.messagesLoading.set(true);
     this.messages.set([]);
 
-    setTimeout(() => {
-      if (seq !== this.loadSeq) return;   // a newer selection superseded this
-      this.messages.set(this.mockThread(c));
-      this.messagesLoading.set(false);
-    }, 420);
+    this.api.getMessages(c.id).subscribe({
+      next: (list) => {
+        if (seq !== this.loadSeq) return;   // a newer selection superseded this
+        this.messages.set(list.map((m) => this.toThreadMessage(m)));
+        this.messagesLoading.set(false);
+      },
+      error: () => {
+        if (seq !== this.loadSeq) return;
+        this.messagesLoading.set(false);
+        this.messagesError.set(true);
+      },
+    });
   }
 
   retry(): void {
@@ -689,19 +739,38 @@ export class ConversationsPage {
 
   send(): void {
     const text = this.draft().trim();
-    if (!text || this.messagesLoading()) return;
+    const c = this.selected();
+    if (!text || this.messagesLoading() || !c) return;
 
-    // Optimistic append — attribute to the active reply mode. When the
-    // messaging service lands, POST here and reconcile the optimistic id.
-    const msg: ThreadMessage = {
-      id: `local-${++this.localSeq}`,
+    // Optimistic append — attribute to the active reply mode, then POST and
+    // reconcile the optimistic entry with the server-created message.
+    const tempId = `local-${++this.localSeq}`;
+    const optimistic: ThreadMessage = {
+      id: tempId,
       from: this.mode() === 'human' ? 'human' : 'ai',
       body: text,
       at: Date.now(),
     };
-    this.messages.update(list => [...list, msg]);
+    this.messages.update(list => [...list, optimistic]);
     this.draft.set('');
-    this.toast.show('Message sent', 'success');
+
+    this.api.sendMessage(c.id, text).subscribe({
+      next: (created) => {
+        const real = this.toThreadMessage(created);
+        this.messages.update(list => list.map(m => (m.id === tempId ? real : m)));
+        // Reflect the new outbound message in the list preview.
+        this.conversations.update(list =>
+          list.map(x => (x.id === c.id ? { ...x, preview: text, lastMessageAt: real.at } : x)),
+        );
+        this.toast.show('Message sent', 'success');
+      },
+      error: () => {
+        // Roll back the optimistic message and surface the failure.
+        this.messages.update(list => list.filter(m => m.id !== tempId));
+        this.draft.set(text);
+        this.toast.show('Failed to send message', 'error');
+      },
+    });
   }
 
   /** Mask to +60 1X XXX XXXX, keeping country code + first mobile digit visible. */
