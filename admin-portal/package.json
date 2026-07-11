@@ -1,0 +1,42 @@
+{
+  "name": "echora-admin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --port 39510",
+    "build": "ng build --configuration development && node post-build.mjs",
+    "build:watch": "node post-build.mjs --watch & ng build --watch --configuration development",
+    "build:prod": "ng build --configuration production && node post-build.mjs --prod",
+    "build:sandbox": "ng build --configuration sandbox && node post-build.mjs --prod",
+    "lint": "ng lint"
+  },
+  "dependencies": {
+    "@angular/animations": "^19.2.14",
+    "@angular/common": "^19.2.14",
+    "@angular/compiler": "^19.2.14",
+    "@angular/core": "^19.2.14",
+    "@angular/forms": "^19.2.14",
+    "@angular/platform-browser": "^19.2.14",
+    "@angular/platform-browser-dynamic": "^19.2.14",
+    "@angular/router": "^19.2.14",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/preferences": "^6.0.0",
+    "@ionic/angular": "^8.6.2",
+    "@primeng/themes": "^21.0.4",
+    "html-to-image": "^1.11.13",
+    "ionicons": "^7.4.0",
+    "primeicons": "^7.0.0",
+    "primeng": "^19.1.4",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.6.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^19.2.14",
+    "@angular/cli": "^19.2.26",
+    "@angular/compiler-cli": "^19.2.14",
+    "@ionic/angular-toolkit": "^12.0.0",
+    "typescript": "~5.7.0"
+  }
+}

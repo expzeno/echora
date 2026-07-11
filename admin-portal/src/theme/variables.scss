@@ -1,0 +1,254 @@
+/* ===========================================================================
+   Echora — Design Tokens
+   Executes BRAND_GUIDE.md §3 (Visual Identity). Three-tier: primitives →
+   semantic → component. Components use SEMANTIC/COMPONENT tokens only.
+   Governing law: chrome is quiet, color is signal.
+   Dark (Obsidian) is the HERO surface — ops teams live on screen all day.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Tier 1 — primitives (never referenced directly in components)
+   --------------------------------------------------------------------------- */
+:root {
+  --ec-indigo-500: #4C4FE0;   /* Resonance Indigo */
+  --ec-indigo-700: #2E2FA6;   /* Resonance Indigo Deep */
+  --ec-teal-400:   #22C8C0;   /* Signal Teal */
+  --ec-amber-400:  #FFB13C;   /* Pulse Amber — the "echo" */
+  --ec-mint-400:   #34D399;   /* Success / online-live */
+  --ec-rose-500:   #F0556B;   /* Danger / SLA breach */
+
+  --ec-obsidian:    #0E1020;
+  --ec-slate-panel: #191C2E;
+  --ec-surface-2:   #202542;
+  --ec-muted-line:  #2A2E44;
+  --ec-mist:        #F6F7FB;
+  --ec-white:       #FFFFFF;
+  --ec-ink-dark:    #E8EAF4;
+  --ec-ink-light:   #16182A;
+  --ec-muted:       #9BA0BC;
+
+  /* Typography — two human families + one mono (BRAND_GUIDE §3.2) */
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --ion-font-family: var(--font-body);
+
+  /* Harmonic type scale — perfect fifth (1.5×) */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;   /* base body */
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+  --font-size-3xl: 48px;  /* KPIs */
+  --type-scale-ratio: 1.5;
+
+  /* Radius (BRAND_GUIDE §4) */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+}
+
+/* ---------------------------------------------------------------------------
+   Tier 2 — semantic (dark = HERO). Also the default :root theme.
+   --------------------------------------------------------------------------- */
+:root,
+:root[data-theme="dark"] {
+  --brand-primary:       #4C4FE0;
+  --brand-primary-deep:  #2E2FA6;   /* hover/pressed, gradient anchor */
+  --brand-secondary:     #22C8C0;   /* secondary action, chart series B */
+  --brand-accent:        #FFB13C;   /* the ONE echo — key KPI / alert / focus pulse */
+
+  --app-bg:      #0E1020;   /* Obsidian */
+  --surface:     #191C2E;   /* Slate Panel */
+  --surface-2:   #202542;   /* elevated panel */
+  --border:      #2A2E44;
+  --text:        #E8EAF4;
+  --text-muted:  #9BA0BC;
+  --text-2:      #9BA0BC;
+
+  --status-live:   #34D399;   /* channel connected / agent online */
+  --status-warn:   #FFB13C;   /* SLA warning */
+  --status-urgent: #F0556B;   /* SLA breach / error / destructive */
+
+  --shadow-rgb:  0, 0, 0;
+  --gradient-brand: linear-gradient(135deg, #4C4FE0, #22C8C0); /* brand moments ONLY */
+}
+
+/* Tier 2 — semantic (light peer) */
+:root[data-theme="light"] {
+  --brand-primary:       #4C4FE0;
+  --brand-primary-deep:  #2E2FA6;
+  --brand-secondary:     #22C8C0;
+  --brand-accent:        #FFB13C;
+
+  --app-bg:      #F6F7FB;   /* Mist */
+  --surface:     #FFFFFF;
+  --surface-2:   #F6F7FB;
+  --border:      #E4E7EC;
+  --text:        #16182A;
+  --text-muted:  #667085;
+  --text-2:      #667085;
+
+  --status-live:   #34D399;
+  --status-warn:   #FFB13C;
+  --status-urgent: #F0556B;
+
+  --shadow-rgb:  46, 47, 166;   /* indigo-tinted premium shadow */
+  --gradient-brand: linear-gradient(135deg, #4C4FE0, #22C8C0);
+}
+
+/* ---------------------------------------------------------------------------
+   Tier 3 — component
+   --------------------------------------------------------------------------- */
+:root {
+  --btn-primary-bg: var(--brand-primary);
+  --card-bg: var(--surface);
+  --nav-active: var(--brand-primary);
+  --tick-read: var(--brand-primary);   /* echo-return: read-tick fill */
+  --kpi-callout: var(--brand-accent);  /* the single amber echo per view */
+
+  /* soft, low-elevation, brand-tinted shadows; opacity never > 0.15 */
+  --shadow-sm: 0 1px 3px rgba(var(--shadow-rgb), 0.06), 0 1px 2px rgba(var(--shadow-rgb), 0.04);
+  --shadow-md: 0 4px 12px rgba(var(--shadow-rgb), 0.08), 0 2px 4px rgba(var(--shadow-rgb), 0.04);
+  --shadow-lg: 0 12px 24px rgba(var(--shadow-rgb), 0.10), 0 4px 8px rgba(var(--shadow-rgb), 0.06);
+}
+
+/* ===========================================================================
+   Ionic color mapping — bridge Echora semantics onto Ionic's palette so
+   framework components inherit the brand. Dark (Obsidian) is the default.
+   =========================================================================== */
+:root {
+  --ion-color-primary: #4C4FE0;
+  --ion-color-primary-rgb: 76, 79, 224;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #2E2FA6;
+  --ion-color-primary-tint: #6366e6;
+
+  --ion-color-secondary: #22c8c0;
+  --ion-color-secondary-rgb: 34, 200, 192;
+  --ion-color-secondary-contrast: #0e1020;
+  --ion-color-secondary-contrast-rgb: 14, 16, 32;
+  --ion-color-secondary-shade: #1eb0a9;
+  --ion-color-secondary-tint: #38cec6;
+
+  --ion-color-success: #34d399;
+  --ion-color-success-rgb: 52, 211, 153;
+  --ion-color-success-contrast: #0e1020;
+  --ion-color-success-contrast-rgb: 14, 16, 32;
+  --ion-color-success-shade: #2eba87;
+  --ion-color-success-tint: #48d7a3;
+
+  --ion-color-warning: #ffb13c;
+  --ion-color-warning-rgb: 255, 177, 60;
+  --ion-color-warning-contrast: #0e1020;
+  --ion-color-warning-contrast-rgb: 14, 16, 32;
+  --ion-color-warning-shade: #e09c35;
+  --ion-color-warning-tint: #ffb950;
+
+  --ion-color-danger: #f0556b;
+  --ion-color-danger-rgb: 240, 85, 107;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #d34b5e;
+  --ion-color-danger-tint: #f2667a;
+
+  --ion-color-light: #191c2e;
+  --ion-color-light-rgb: 25, 28, 46;
+  --ion-color-light-contrast: #e8eaf4;
+  --ion-color-light-contrast-rgb: 232, 234, 244;
+  --ion-color-light-shade: #16182a;
+  --ion-color-light-tint: #202542;
+
+  --ion-color-dark: #e8eaf4;
+  --ion-color-dark-rgb: 232, 234, 244;
+  --ion-color-dark-contrast: #0e1020;
+  --ion-color-dark-contrast-rgb: 14, 16, 32;
+  --ion-color-dark-shade: #ccced7;
+  --ion-color-dark-tint: #eaecf5;
+
+  --ion-background-color: #0e1020;
+  --ion-text-color: #e8eaf4;
+  --ion-toolbar-background: #191c2e;
+  --ion-toolbar-color: #e8eaf4;
+
+  /* Admin semantic tokens — dark HERO (mapped to Echora surfaces) */
+  --admin-bg: #0e1020;
+  --admin-surface: #191c2e;
+  --admin-border: #2a2e44;
+  --admin-divider: #202542;
+  --admin-text: #e8eaf4;
+  --admin-text-secondary: #9ba0bc;
+  --admin-text-muted: #6b708e;
+  --admin-text-body: #cfd2e4;
+  --admin-text-nav: #9ba0bc;
+  --admin-primary: #4c4fe0;
+  --admin-primary-hover: #2e2fa6;
+  --admin-toolbar-bg: #191c2e;
+  --admin-sidebar-bg: #191c2e;
+  --admin-sidebar-border: #2a2e44;
+  --admin-content-bg: #0e1020;
+}
+
+/* Light peer — opt-in via body.light-theme (dark stays the hero default) */
+body.light-theme {
+  --ion-color-light: #f6f7fb;
+  --ion-color-light-rgb: 246, 247, 251;
+  --ion-color-light-contrast: #16182a;
+  --ion-color-light-contrast-rgb: 22, 24, 42;
+  --ion-color-light-shade: #e4e7ec;
+  --ion-color-light-tint: #ffffff;
+
+  --ion-color-dark: #16182a;
+  --ion-color-dark-rgb: 22, 24, 42;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+
+  --ion-background-color: #f6f7fb;
+  --ion-text-color: #16182a;
+  --ion-toolbar-background: #ffffff;
+  --ion-toolbar-color: #16182a;
+
+  --admin-bg: #f6f7fb;
+  --admin-surface: #ffffff;
+  --admin-border: #e4e7ec;
+  --admin-divider: #f1f2f6;
+  --admin-text: #16182a;
+  --admin-text-secondary: #667085;
+  --admin-text-muted: #98a2b3;
+  --admin-text-body: #344054;
+  --admin-text-nav: #475467;
+  --admin-primary: #4c4fe0;
+  --admin-primary-hover: #2e2fa6;
+  --admin-toolbar-bg: #ffffff;
+  --admin-sidebar-bg: #ffffff;
+  --admin-sidebar-border: #e4e7ec;
+  --admin-content-bg: #f6f7fb;
+}
+
+/* Keep body.dark-theme working for existing toggle wiring (dark = default). */
+body.dark-theme {
+  --ion-background-color: #0e1020;
+  --ion-text-color: #e8eaf4;
+  --ion-toolbar-background: #191c2e;
+  --ion-toolbar-color: #e8eaf4;
+
+  --admin-bg: #0e1020;
+  --admin-surface: #191c2e;
+  --admin-border: #2a2e44;
+  --admin-divider: #202542;
+  --admin-text: #e8eaf4;
+  --admin-text-secondary: #9ba0bc;
+  --admin-text-muted: #6b708e;
+  --admin-text-body: #cfd2e4;
+  --admin-text-nav: #9ba0bc;
+  --admin-primary: #4c4fe0;
+  --admin-primary-hover: #2e2fa6;
+  --admin-toolbar-bg: #191c2e;
+  --admin-sidebar-bg: #191c2e;
+  --admin-sidebar-border: #2a2e44;
+  --admin-content-bg: #0e1020;
+}

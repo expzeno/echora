@@ -1,0 +1,12 @@
+title = "echora admin gitleaks config"
+
+[allowlist]
+description = "Project-level allowlist"
+
+[[allowlist.paths]]
+description = "Public CyberZeno browser token — intentionally in source"
+paths = ["**/environment.ts", "**/environment.sandbox.ts"]
+
+[[allowlist.paths]]
+description = "iOS Podfile lock checksums look like tokens to scanners"
+paths = ["ios/Podfile.lock"]

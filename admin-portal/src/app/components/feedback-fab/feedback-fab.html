@@ -1,0 +1,96 @@
+@if (open()) {
+  <div class="fb-backdrop" (click)="closeModal()"></div>
+
+  <div class="fb-sheet">
+    <div class="fb-handle"><div class="fb-handle-bar"></div></div>
+
+    <div class="fb-header">
+      <span class="fb-title">Send Feedback</span>
+      <button type="button" (click)="closeModal()" class="fb-close">&times;</button>
+    </div>
+
+    @if (sent()) {
+      <div class="fb-sent">
+        <span class="fb-sent-icon">&#10003;</span>
+        <p>Thanks — feedback received.</p>
+      </div>
+    } @else {
+      <div class="fb-body">
+
+        <div class="fb-page-info">
+          <span class="fb-page-label">Page:</span>
+          <span class="fb-page-path">{{ currentPage }}</span>
+        </div>
+
+        <div class="fb-field">
+          <label class="fb-label">Category</label>
+          <select [formControl]="categoryCtrl" class="fb-select">
+            @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+        </div>
+
+        <div class="fb-field">
+          <label class="fb-label">Message</label>
+          <textarea rows="5" [formControl]="messageCtrl" class="fb-textarea"
+                    (input)="onMessageInput()"
+                    placeholder="Describe the issue or suggestion…"></textarea>
+          @if (contextNudge(); as nudge) {
+            <div class="fb-nudge">
+              <span>{{ nudge }}</span>
+              <button type="button" class="fb-nudge-dismiss" (click)="dismissNudge()">&times;</button>
+            </div>
+          }
+        </div>
+
+        <div class="fb-field">
+          <label class="fb-label">Screenshot (optional)</label>
+          @if (capturingScreenshot()) {
+            <div class="fb-capturing">
+              <div class="fb-spinner"></div>
+              <span>Capturing…</span>
+            </div>
+          } @else if (screenshotBase64()) {
+            <div class="fb-preview-wrap">
+              <img [src]="screenshotBase64()!" class="fb-preview-img" />
+              <div class="fb-preview-actions">
+                <button type="button" (click)="removeScreenshot()" class="fb-action-btn">Remove</button>
+                <button type="button" (click)="uploadFile()" class="fb-action-btn">Replace</button>
+              </div>
+            </div>
+          } @else {
+            <div class="fb-screenshot-btns">
+              <button type="button" (click)="captureScreen()" class="fb-action-btn">Capture</button>
+              <button type="button" (click)="uploadFile()" class="fb-action-btn">Upload</button>
+            </div>
+          }
+          <input #fileInput type="file" accept="image/*" class="fb-hidden" (change)="onFileSelected($event)" />
+        </div>
+
+        @if (error(); as err) {
+          <div class="fb-error">{{ err }}</div>
+        }
+
+        <button type="button" (click)="send()"
+                [disabled]="(!messageCtrl.value && !screenshotBase64()) || submitting()"
+                class="fb-submit">
+          {{ submitting() ? 'Sending…' : 'Send' }}
+        </button>
+
+      </div>
+    }
+
+    <div class="fb-safe-area"></div>
+  </div>
+}
+
+@if (showTooltip()) {
+  <div class="fb-tooltip" (click)="dismissTooltip()">
+    <span>Tap here to send feedback, report bugs, or ask questions</span>
+    <button type="button" class="fb-tooltip-close" aria-label="Dismiss">&times;</button>
+    <div class="fb-tooltip-arrow"></div>
+  </div>
+}
+
+<button type="button" (click)="openModal()" aria-label="Send feedback" class="fb-fab">
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+</button>

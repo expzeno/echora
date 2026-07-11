@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Echora — Agent Dashboard</title>
+  <base href="/" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="msapplication-tap-highlight" content="no" />
+  <link rel="icon" type="image/png" href="assets/icon/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- CyberZeno SDK — init is called from CyberZenoService using environment config -->
+  <script src="https://cz.labzeno.com/sdk.js" async></script>
+</head>
+<body>
+  <app-root></app-root>
+
+  <!-- Dev-only hot reload: polls build-version.json for changes -->
+  <script>
+    (function() {
+      var stored = null;
+      fetch('/build-version.json').then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.devMode) return;
+        stored = d.buildTime;
+        setInterval(function() {
+          fetch('/build-version.json?t=' + Date.now()).then(function(r) { return r.json(); }).then(function(d2) {
+            if (d2.buildTime !== stored) location.reload();
+          }).catch(function() {});
+        }, 4000);
+      }).catch(function() {});
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<div class="tokens-form">
+  <form [formGroup]="form" (ngSubmit)="submit()">
+
+    <!-- Colors Section -->
+    <fieldset class="tokens-form__section">
+      <legend class="tokens-form__legend">Colors</legend>
+      <div class="tokens-form__grid" formGroupName="colors">
+        @for (field of ['primary','secondary','accent','success','warning','danger','text','textMuted','bg','bgAlt']; track field) {
+          <div class="tokens-form__field">
+            <label class="tokens-form__label" [attr.for]="'color-' + field">{{ field }}</label>
+            <div class="tokens-form__color-input">
+              <input
+                class="tokens-form__swatch"
+                type="color"
+                [id]="'color-swatch-' + field"
+                [value]="form.get('colors.' + field)?.value"
+                (input)="setColor('colors.' + field, $event)"
+              />
+              <input
+                class="tokens-form__input"
+                type="text"
+                [id]="'color-' + field"
+                [formControlName]="field"
+                [attr.aria-describedby]="hasError('colors.' + field, 'hexColor') ? 'err-color-' + field : null"
+                placeholder="#RRGGBB"
+              />
+            </div>
+            @if (hasError('colors.' + field, 'required')) {
+              <span class="tokens-form__error" [id]="'err-color-' + field" role="alert">Required</span>
+            }
+            @if (hasError('colors.' + field, 'hexColor')) {
+              <span class="tokens-form__error" [id]="'err-color-' + field" role="alert">Must be #RRGGBB format</span>
+            }
+          </div>
+        }
+      </div>
+      @if (contrastWarning()) {
+        <div class="tokens-form__contrast-warning" role="alert">
+          <span class="tokens-form__warning-icon">⚠</span>
+          {{ contrastWarning() }}
+        </div>
+      }
+    </fieldset>
+
+    <!-- Spacing Section -->
+    <fieldset class="tokens-form__section">
+      <legend class="tokens-form__legend">Spacing (px)</legend>
+      <div class="tokens-form__grid" formGroupName="spacing">
+        @for (field of ['base','button','section','card','input']; track field) {
+          <div class="tokens-form__field">
+            <label class="tokens-form__label" [attr.for]="'spacing-' + field">{{ field }}</label>
+            <input
+              class="tokens-form__input"
+              type="number"
+              [id]="'spacing-' + field"
+              [formControlName]="field"
+              [attr.aria-describedby]="hasError('spacing.' + field, 'minSpacing') || hasError('spacing.' + field, 'integer') ? 'err-spacing-' + field : null"
+              min="4"
+              step="1"
+            />
+            @if (hasError('spacing.' + field, 'required')) {
+              <span class="tokens-form__error" [id]="'err-spacing-' + field" role="alert">Required</span>
+            }
+            @if (hasError('spacing.' + field, 'minSpacing')) {
+              <span class="tokens-form__error" [id]="'err-spacing-' + field" role="alert">Minimum 4px</span>
+            }
+            @if (hasError('spacing.' + field, 'integer')) {
+              <span class="tokens-form__error" [id]="'err-spacing-' + field" role="alert">Must be an integer</span>
+            }
+          </div>
+        }
+      </div>
+    </fieldset>
+
+    <!-- Fonts Section -->
+    <fieldset class="tokens-form__section">
+      <legend class="tokens-form__legend">Typography</legend>
+      <div formGroupName="fonts">
+        <div class="tokens-form__grid">
+          <div class="tokens-form__field">
+            <label class="tokens-form__label" for="font-primary">Primary Font</label>
+            <select class="tokens-form__input tokens-form__select" id="font-primary" formControlName="primary">
+              @for (font of systemFonts; track font) {
+                <option [value]="font">{{ font }}</option>
+              }
+            </select>
+          </div>
+          <div class="tokens-form__field">
+            <label class="tokens-form__label" for="font-secondary">Secondary Font</label>
+            <select class="tokens-form__input tokens-form__select" id="font-secondary" formControlName="secondary">
+              @for (font of systemFonts; track font) {
+                <option [value]="font">{{ font }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="tokens-form__grid" formGroupName="sizes">
+          @for (field of ['body','heading','small']; track field) {
+            <div class="tokens-form__field">
+              <label class="tokens-form__label" [attr.for]="'font-size-' + field">{{ field }} size (px)</label>
+              <input
+                class="tokens-form__input"
+                type="number"
+                [id]="'font-size-' + field"
+                [formControlName]="field"
+                min="10"
+                max="48"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="tokens-form__field">
+          <span class="tokens-form__label">Font Weights</span>
+          <div class="tokens-form__weights">
+            @for (weight of [400, 500, 600, 700]; track weight) {
+              <button
+                type="button"
+                class="tokens-form__weight-btn"
+                [class.tokens-form__weight-btn--active]="isWeightSelected(weight)"
+                (click)="toggleWeight(weight)"
+                [attr.aria-pressed]="isWeightSelected(weight)"
+              >
+                {{ weight }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Mode Section -->
+    <fieldset class="tokens-form__section">
+      <legend class="tokens-form__legend">Theme Mode</legend>
+      <div class="tokens-form__mode-group">
+        <label class="tokens-form__mode-label">
+          <input type="radio" formControlName="mode" value="light" />
+          <span class="tokens-form__mode-text">Light</span>
+        </label>
+        <label class="tokens-form__mode-label">
+          <input type="radio" formControlName="mode" value="dark" />
+          <span class="tokens-form__mode-text">Dark</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <!-- Submit -->
+    <div class="tokens-form__actions">
+      <button
+        type="submit"
+        class="tokens-form__submit"
+        [disabled]="form.invalid || submitting()"
+      >
+        @if (submitting()) {
+          Saving…
+        } @else {
+          Save Tokens
+        }
+      </button>
+    </div>
+  </form>
+
+  <!-- Live Demo Preview -->
+  <div class="demo-preview" [style]="demoStylesLive()">
+    <h3 class="demo-preview__title">Live Preview</h3>
+
+    <div class="demo-preview__card">
+      <h4 class="demo-preview__card-heading">Sample Card</h4>
+      <p class="demo-preview__card-text">This card demonstrates your token choices — colors, spacing, and typography working together.</p>
+      <p class="demo-preview__card-muted">Muted helper text appears like this.</p>
+    </div>
+
+    <div class="demo-preview__buttons">
+      <button type="button" class="demo-preview__button demo-preview__button--primary">Primary Action</button>
+      <button type="button" class="demo-preview__button demo-preview__button--secondary">Secondary</button>
+    </div>
+
+    <div class="demo-preview__text-samples">
+      <p class="demo-preview__heading-sample">Heading Text</p>
+      <p class="demo-preview__body-sample">Body text at the configured size. This is how your main content will look with the selected font and size tokens.</p>
+      <p class="demo-preview__small-sample">Small text for captions and metadata.</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+# PipeZeno gitA→gitB filter
+# Files listed here are stripped during promotion to the release repo.
+# Uses gitignore-style glob patterns. NOT the same as .gitignore.
+
+# Agent artifacts (non-negotiable defaults)
+.claude/
+CLAUDE.md
+.agent-comms/
+feedback.json
+feedback-screenshots/
+
+# Test ARTIFACTS only — NOT test source files.
+# e2e/, *.spec.ts etc. MUST travel to gitB.
+# Sandbox runs tests as a pipeline gate before production promotion.
+playwright-report/
+coverage/
+
+# Build outputs (rebuilt on sandbox)
+node_modules/
+www/
+dist/
+.angular/
+
+# Environment files
+.env
+.env.*

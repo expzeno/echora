@@ -1,0 +1,2 @@
+# Suppress Semgrep false positives from Angular/Ionic patterns.
+src/app/
