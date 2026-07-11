@@ -136,26 +136,68 @@ interface ThreadMessage {
               </div>
             </header>
 
-            <div class="conv-thread">
-              @for (m of thread(); track m.id; let i = $index) {
-                <div
-                  class="conv-msg"
-                  [class.conv-msg--out]="m.from === 'ai' || m.from === 'human'"
-                  [class.conv-msg--ai]="m.from === 'ai'"
-                  [class.conv-msg--human]="m.from === 'human'">
-                  @if ((m.from === 'ai' || m.from === 'human') && (i === 0 || thread()[i - 1].from !== m.from)) {
-                    <div class="conv-msg-label">{{ m.from === 'ai' ? 'AI Agent' : 'You' }}</div>
-                  }
-                  <div class="conv-bubble">
-                    @if (m.from === 'ai') {
-                      <span class="conv-ai-icon" aria-hidden="true">⚡</span>
-                    }
-                    <span class="conv-bubble-text">{{ m.body }}</span>
+            @if (messagesLoading()) {
+              <!-- ── SKELETON: messages loading ─────────────────────── -->
+              <div class="conv-thread conv-thread--skeleton" aria-busy="true" aria-label="Loading messages">
+                @for (s of skeletonRows; track s.id) {
+                  <div class="conv-skel-msg" [class.conv-skel-msg--out]="s.out">
+                    <div class="conv-skel-bubble" [style.width.%]="s.w"></div>
+                    <div class="conv-skel-line"></div>
                   </div>
-                  <div class="conv-msg-time">{{ timeAgo(m.at) }}</div>
+                }
+              </div>
+            } @else if (messagesError()) {
+              <!-- ── ERROR: fetch failed ────────────────────────────── -->
+              <div class="conv-thread conv-thread--state">
+                <div class="conv-error-card" role="alert">
+                  <svg class="conv-error-ic" width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 8.5v4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="12" cy="16.4" r="1.15" fill="currentColor" />
+                    <path d="M12 3.2 21 19H3L12 3.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                  </svg>
+                  <div class="conv-error-title">Couldn't load messages</div>
+                  <div class="conv-error-sub">Something went wrong fetching this conversation.</div>
+                  <button class="conv-retry" (click)="retry()">Retry</button>
                 </div>
-              }
-            </div>
+              </div>
+            } @else if (messages().length === 0) {
+              <!-- ── EMPTY: no messages yet ─────────────────────────── -->
+              <div class="conv-thread conv-thread--state">
+                <div class="conv-empty-thread">
+                  <svg class="conv-empty-ic" width="60" height="60" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                    <path d="M8 12a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H20l-8 7v-7h0a4 4 0 0 1-4-4V12Z"
+                          stroke="var(--brand-secondary)" stroke-width="2" stroke-linejoin="round" opacity="0.9" />
+                    <circle cx="18" cy="20" r="1.6" fill="var(--brand-primary)" />
+                    <circle cx="24" cy="20" r="1.6" fill="var(--brand-primary)" />
+                    <circle cx="30" cy="20" r="1.6" fill="var(--brand-primary)" />
+                  </svg>
+                  <div class="conv-empty-title">No messages yet</div>
+                  <div class="conv-empty-sub">Start the conversation below.</div>
+                </div>
+              </div>
+            } @else {
+              <!-- ── READY: message thread ──────────────────────────── -->
+              <div class="conv-thread">
+                @for (m of messages(); track m.id; let i = $index) {
+                  <div
+                    class="conv-msg"
+                    [class.conv-msg--out]="m.from === 'ai' || m.from === 'human'"
+                    [class.conv-msg--ai]="m.from === 'ai'"
+                    [class.conv-msg--human]="m.from === 'human'">
+                    @if ((m.from === 'ai' || m.from === 'human') && (i === 0 || messages()[i - 1].from !== m.from)) {
+                      <div class="conv-msg-label">{{ m.from === 'ai' ? 'AI Agent' : 'You' }}</div>
+                    }
+                    <div class="conv-bubble">
+                      @if (m.from === 'ai') {
+                        <span class="conv-ai-icon" aria-hidden="true">⚡</span>
+                      }
+                      <span class="conv-bubble-text">{{ m.body }}</span>
+                    </div>
+                    <div class="conv-msg-time">{{ timeAgo(m.at) }}</div>
+                  </div>
+                }
+              </div>
+            }
 
             <div class="conv-composer">
               <textarea
@@ -163,8 +205,9 @@ interface ThreadMessage {
                 rows="1"
                 [ngModel]="draft()"
                 (ngModelChange)="draft.set($event)"
+                (keydown)="onComposerKeydown($event)"
                 [placeholder]="mode() === 'human' ? 'Replying as human agent…' : 'Type a reply…'"></textarea>
-              <button class="conv-send" [disabled]="!draft().trim()" (click)="send()">Send</button>
+              <button class="conv-send" [disabled]="!draft().trim() || messagesLoading()" (click)="send()">Send</button>
             </div>
           }
         </section>
@@ -437,6 +480,77 @@ interface ThreadMessage {
     .conv-send:hover:not(:disabled) { background: var(--brand-primary-deep); }
     .conv-send:disabled { opacity: 0.45; cursor: not-allowed; }
 
+    /* ── STATE CONTAINERS (skeleton / empty / error) ──────────── */
+    .conv-thread--state { align-items: center; justify-content: center; }
+
+    /* ── SKELETON LOADER ──────────────────────────────────────── */
+    .conv-skel-msg {
+      max-width: 68%; align-self: flex-start;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .conv-skel-msg--out { align-self: flex-end; align-items: flex-end; }
+    .conv-skel-bubble {
+      height: 40px; min-width: 90px; border-radius: 14px;
+      border-bottom-left-radius: 4px;
+      background: linear-gradient(100deg,
+        var(--surface-2) 30%, rgba(20,184,166,0.16) 50%, var(--surface-2) 70%);
+      background-size: 220% 100%;
+      animation: conv-skel-shimmer 1.4s ease-in-out infinite;
+    }
+    .conv-skel-msg--out .conv-skel-bubble {
+      border-bottom-left-radius: 14px; border-bottom-right-radius: 4px;
+      background: linear-gradient(100deg,
+        var(--surface-2) 30%, rgba(99,102,241,0.20) 50%, var(--surface-2) 70%);
+      background-size: 220% 100%;
+    }
+    .conv-skel-line {
+      height: 9px; width: 44px; border-radius: 6px;
+      background: var(--surface-2);
+      animation: conv-skel-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes conv-skel-shimmer {
+      0%   { background-position: 220% 0; }
+      100% { background-position: -220% 0; }
+    }
+    @keyframes conv-skel-pulse {
+      0%, 100% { opacity: 0.55; }
+      50%      { opacity: 1; }
+    }
+
+    /* ── EMPTY THREAD STATE ───────────────────────────────────── */
+    .conv-empty-thread {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 24px; text-align: center;
+    }
+    .conv-empty-ic { margin-bottom: 10px; }
+    .conv-empty-title {
+      font-family: var(--font-display); font-size: 17px; font-weight: 600;
+      color: var(--admin-text);
+    }
+    .conv-empty-sub { font-size: 13.5px; color: var(--admin-text-muted); }
+
+    /* ── ERROR STATE ──────────────────────────────────────────── */
+    .conv-error-card {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      max-width: 320px; padding: 26px 24px; text-align: center;
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.32);
+      border-radius: var(--radius-lg);
+    }
+    .conv-error-ic { color: var(--brand-accent, #F59E0B); margin-bottom: 6px; }
+    .conv-error-title {
+      font-family: var(--font-display); font-size: 16px; font-weight: 600;
+      color: var(--admin-text);
+    }
+    .conv-error-sub { font-size: 13px; color: var(--admin-text-secondary); }
+    .conv-retry {
+      margin-top: 12px; padding: 9px 22px;
+      background: var(--brand-primary); border: none; border-radius: var(--radius-lg);
+      color: #fff; font-family: var(--font-body); font-size: 13.5px; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .conv-retry:hover { background: var(--brand-primary-deep); }
+
     /* ── RESPONSIVE (<768px) ──────────────────────────────────── */
     @media (max-width: 767px) {
       .conv-list { width: 100%; border-right: none; }
@@ -466,6 +580,25 @@ export class ConversationsPage {
   readonly draft = signal('');
   readonly mode = signal<'ai' | 'human'>('ai');
 
+  // ── Thread state machine ──────────────────────────────────────
+  // The real messaging service replaces the body of loadThread(); the
+  // template already renders skeleton / empty / error / ready off these.
+  readonly messages = signal<ThreadMessage[]>([]);
+  readonly messagesLoading = signal(false);
+  readonly messagesError = signal(false);
+
+  // Skeleton placeholder rows (varied widths, alternating in/out).
+  readonly skeletonRows = [
+    { id: 's1', out: false, w: 62 },
+    { id: 's2', out: true, w: 48 },
+    { id: 's3', out: false, w: 74 },
+    { id: 's4', out: true, w: 56 },
+    { id: 's5', out: false, w: 40 },
+  ];
+
+  private loadSeq = 0;
+  private localSeq = 0;
+
   // Placeholder data — real inbox wiring lands with the messaging service.
   private readonly now = Date.now();
   readonly conversations = signal<Conversation[]>([
@@ -490,9 +623,8 @@ export class ConversationsPage {
     this.conversations().find(c => c.id === this.selectedId()) ?? null,
   );
 
-  readonly thread = computed<ThreadMessage[]>(() => {
-    const c = this.selected();
-    if (!c) return [];
+  /** Placeholder thread — swapped for the messaging-service fetch in loadThread(). */
+  private mockThread(c: Conversation): ThreadMessage[] {
     return [
       { id: 'm1', from: 'customer', body: 'Hi, I need help with my order', at: c.lastMessageAt - 12 * 60_000 },
       { id: 'm2', from: 'ai', body: "Hello! I'm Echora AI. I can help you with that. Could you share your order number?", at: c.lastMessageAt - 10 * 60_000 },
@@ -500,7 +632,31 @@ export class ConversationsPage {
       { id: 'm4', from: 'ai', body: 'Found it! Your order is currently being processed and will ship within 24 hours.', at: c.lastMessageAt - 6 * 60_000 },
       { id: 'm5', from: 'human', body: "Just jumping in — I've escalated this to our warehouse team. You'll get an update by EOD.", at: c.lastMessageAt - 2 * 60_000 },
     ];
-  });
+  }
+
+  /**
+   * Load the thread for a conversation. Currently resolves mock data after a
+   * short simulated latency so the skeleton/empty/error states render as they
+   * will with the live API. Real wiring: replace the setTimeout body with
+   * `this.api.getMessages(c.id).subscribe({ next, error })`.
+   */
+  private loadThread(c: Conversation): void {
+    const seq = ++this.loadSeq;
+    this.messagesError.set(false);
+    this.messagesLoading.set(true);
+    this.messages.set([]);
+
+    setTimeout(() => {
+      if (seq !== this.loadSeq) return;   // a newer selection superseded this
+      this.messages.set(this.mockThread(c));
+      this.messagesLoading.set(false);
+    }, 420);
+  }
+
+  retry(): void {
+    const c = this.selected();
+    if (c) this.loadThread(c);
+  }
 
   countFor(f: ConvFilter): number {
     if (f === 'all') return this.conversations().length;
@@ -514,11 +670,36 @@ export class ConversationsPage {
       this.conversations.update(list =>
         list.map(c => (c.id === id ? { ...c, unreadCount: 0 } : c)),
       );
+      const c = this.conversations().find(x => x.id === id);
+      if (c) this.loadThread(c);
+    } else {
+      this.messages.set([]);
+      this.messagesLoading.set(false);
+      this.messagesError.set(false);
+    }
+  }
+
+  /** Enter submits; Shift+Enter inserts a newline. */
+  onComposerKeydown(ev: KeyboardEvent): void {
+    if (ev.key === 'Enter' && !ev.shiftKey) {
+      ev.preventDefault();
+      this.send();
     }
   }
 
   send(): void {
-    // Placeholder — outbound send is wired with the messaging service.
+    const text = this.draft().trim();
+    if (!text || this.messagesLoading()) return;
+
+    // Optimistic append — attribute to the active reply mode. When the
+    // messaging service lands, POST here and reconcile the optimistic id.
+    const msg: ThreadMessage = {
+      id: `local-${++this.localSeq}`,
+      from: this.mode() === 'human' ? 'human' : 'ai',
+      body: text,
+      at: Date.now(),
+    };
+    this.messages.update(list => [...list, msg]);
     this.draft.set('');
     this.toast.show('Message sent', 'success');
   }
