@@ -503,7 +503,9 @@ ion-content { --background: var(--admin-content-bg); }
 // The single amber echo — the standout KPI reads pre-attentively.
 .dash-stat-value--echo { color: var(--brand-accent); }
 .dash-stat-label { font-size: 13px; color: var(--admin-text-secondary); font-weight: 500; margin-top: 2px; }
-.dash-stat-sub { font-size: 12px; color: var(--admin-text-muted); width: 100%; padding-top: 8px; border-top: 1px solid var(--admin-divider); margin-top: 2px; }
+.dash-stat-sub { font-size: 12px; color: var(--admin-text-muted); width: 100%; padding-top: 8px; border-top: 1px solid var(--admin-divider); margin-top: 2px; font-variant-numeric: tabular-nums; }
+// Positive delta on the Messages KPI — success green, matches the resolved marker.
+.dash-stat-sub--up { color: #22C55E; }
 
 .dash-grid {
   display: grid;

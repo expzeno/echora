@@ -94,6 +94,7 @@ import { userRoutes } from './modules/user/user.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import { customerRoutes } from './modules/customer/customer.routes.js';
 import { merchantRoutes } from './modules/merchant/merchant.routes.js';
+import { conversationRoutes } from './modules/conversations/conversations.routes.js';
 import { feedbackRoutes } from './modules/feedback/feedback.routes.js';
 import { custPublicRoutes } from './modules/customer/custPublic.routes.js';
 import { custProfileRoutes } from './modules/customer/custProfile.routes.js';
@@ -127,6 +128,7 @@ if (mountAll || portal === 'admin') {
   app.use('/company/dashboard', dashboardRoutes);
   app.use('/company/customer', customerRoutes);
   app.use('/company/merchant', merchantRoutes);
+  app.use('/api/v1/conversations', conversationRoutes);
 }
 if (mountAll || portal === 'customer') {
   app.use('/customer/access', customerAuthRoutes);

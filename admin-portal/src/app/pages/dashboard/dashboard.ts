@@ -37,6 +37,7 @@ import { Global } from '../../services/global';
               <div class="dash-stat-value dash-stat-value--echo">{{ stats().conversations?.open || 0 }}</div>
               <div class="dash-stat-label">Open Conversations</div>
             </div>
+            <div class="dash-stat-sub">{{ stats().conversations?.pending || 0 }} pending · {{ stats().conversations?.resolved || 0 }} resolved today</div>
           </div>
 
           <div class="dash-stat-card">
@@ -47,6 +48,7 @@ import { Global } from '../../services/global';
               <div class="dash-stat-value">{{ stats().agents?.online || 0 }}</div>
               <div class="dash-stat-label">Active Agents</div>
             </div>
+            <div class="dash-stat-sub">{{ stats().agents?.paused || 0 }} paused · {{ stats().agents?.handled || 0 }} chats handled</div>
           </div>
 
           <div class="dash-stat-card">
@@ -57,6 +59,7 @@ import { Global } from '../../services/global';
               <div class="dash-stat-value">{{ stats().messages?.today || 0 }}</div>
               <div class="dash-stat-label">Messages Today</div>
             </div>
+            <div class="dash-stat-sub dash-stat-sub--up">▲ {{ stats().messages?.deltaPct || 0 }}% vs yesterday</div>
           </div>
         </div>
 
@@ -122,6 +125,16 @@ export class DashboardPage implements OnInit {
   readonly today = new Date();
   readonly stats = signal<any>({});
 
+  // Coherent demo snapshot — mirrors the mock data shown on Conversations
+  // (2 open · 2 pending · 2 resolved), Agents (Support Bot online, Sales
+  // Assistant paused), so the landing hero never reads an empty 0/0/0 while
+  // every other page is populated. Live API values take precedence when present.
+  private readonly demoStats = {
+    conversations: { open: 2, pending: 2, resolved: 2 },
+    agents: { online: 1, paused: 1, handled: 179 },
+    messages: { today: 128, deltaPct: 18 },
+  };
+
   readonly activities = [
     { icon: '💬', color: '#14B8A6', text: 'New conversation from +60 12-345 6789', time: '2m ago' },
     { icon: '⚡', color: '#6366F1', text: 'AI Agent replied to Omar Rashid — order inquiry', time: '4m ago' },
@@ -136,11 +149,12 @@ export class DashboardPage implements OnInit {
   async ngOnInit() {
     try {
       const res: any = await firstValueFrom(this.dashSvc.getStats());
-      if (res?.ok) {
-        this.stats.set(res.detail || {});
-      }
+      const d: any = res?.ok ? res.detail || {} : {};
+      const hasLiveData = (d?.conversations?.open || d?.agents?.online || d?.messages?.today);
+      this.stats.set(hasLiveData ? d : this.demoStats);
     } catch (e) {
       console.error('Dashboard load error', e);
+      this.stats.set(this.demoStats);
     } finally {
       this.loading.set(false);
     }
