@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="Logo">
-  <rect width="40" height="40" rx="10" fill="#6366F1"/>
-  <rect x="10" y="10" width="8" height="8" rx="2" fill="white" opacity="0.9"/>
-  <rect x="22" y="10" width="8" height="8" rx="2" fill="white" opacity="0.6"/>
-  <rect x="10" y="22" width="8" height="8" rx="2" fill="white" opacity="0.6"/>
-  <rect x="22" y="22" width="8" height="8" rx="2" fill="white" opacity="0.9"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="Echora">
+  <rect width="40" height="40" rx="10" fill="#0E1020"/>
+  <circle cx="20" cy="20" r="2.6" fill="#4C4FE0"/>
+  <path d="M20 13.75 a6.25 6.25 0 0 1 6.25 6.25 a6.25 6.25 0 0 1 -6.25 6.25" fill="none" stroke="#4C4FE0" stroke-width="1.9" stroke-linecap="round"/>
+  <path d="M20 10 a10 10 0 0 1 10 10 a10 10 0 0 1 -10 10" fill="none" stroke="#4C4FE0" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/>
+  <path d="M20 6.25 a13.75 13.75 0 0 1 13.75 13.75 a13.75 13.75 0 0 1 -13.75 13.75" fill="none" stroke="#22C8C0" stroke-width="0.95" stroke-linecap="round" opacity="0.35"/>
 </svg>

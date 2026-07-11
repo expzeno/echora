@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Echora">
+  <rect width="512" height="512" rx="96" fill="#0E1020"/>
+  <circle cx="256" cy="256" r="28" fill="#4C4FE0"/>
+  <path d="M256 176 a80 80 0 0 1 80 80 a80 80 0 0 1 -80 80" fill="none" stroke="#4C4FE0" stroke-width="24" stroke-linecap="round"/>
+  <path d="M256 128 a128 128 0 0 1 128 128 a128 128 0 0 1 -128 128" fill="none" stroke="#4C4FE0" stroke-width="18" stroke-linecap="round" opacity="0.65"/>
+  <path d="M256 80 a176 176 0 0 1 176 176 a176 176 0 0 1 -176 176" fill="none" stroke="#22C8C0" stroke-width="12" stroke-linecap="round" opacity="0.35"/>
+</svg>
