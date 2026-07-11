@@ -1,14 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { IonContent, IonButton } from '@ionic/angular/standalone';
+import { IonContent } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, IonContent, IonButton],
+  imports: [ReactiveFormsModule, IonContent],
   template: `
     <ion-content>
       <div class="login-container">
@@ -43,9 +43,9 @@ import { environment } from '../../../environments/environment';
           </form>
 
           @if (!isProd) {
-            <ion-button expand="block" fill="outline" color="medium" (click)="demoLogin()" style="margin-top:12px">
-              DEMO LOGIN — admin&#64;demo.com / admin123
-            </ion-button>
+            <button type="button" class="login-demo-link" (click)="demoLogin()">
+              Use demo credentials
+            </button>
           }
         </div>
       </div>

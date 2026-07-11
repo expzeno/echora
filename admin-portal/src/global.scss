@@ -255,53 +255,72 @@ ion-content { --background: var(--admin-content-bg); }
   &:focus { border-color: #635bff; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
 }
 
-// ─── Login Page ───
+// ─── Login Page (brand hero — always Obsidian + echo-ring glow) ───
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: var(--admin-bg);
+  padding: 24px;
+  // Echo-ring expanding outward: Obsidian base + faint Indigo glow from center
+  background:
+    radial-gradient(1100px 780px at 50% 40%, rgba(76, 79, 224, 0.10), rgba(76, 79, 224, 0) 60%),
+    radial-gradient(560px 560px at 50% 40%, rgba(34, 200, 192, 0.045), rgba(34, 200, 192, 0) 55%),
+    #0e1020;
 }
 
 .login-card {
-  background: var(--admin-surface);
-  border: 1px solid var(--admin-border);
+  position: relative;
+  // Glass-morphism surface over the glow
+  background: rgba(25, 28, 46, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(76, 79, 224, 0.18);
   border-radius: 16px;
   padding: 40px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(76, 79, 224, 0.08);
 
   .login-logo {
     text-align: center;
     margin-bottom: 32px;
-    .logo-img { width: 56px; height: 56px; object-fit: contain; margin-bottom: 16px; }
-    h1 { font-size: 22px; font-weight: 700; color: var(--admin-text); margin: 0; }
-    p { font-size: 14px; color: var(--admin-text-secondary); margin: 4px 0 0; }
+    // Echo-ring mark, sized as the brand anchor, with a soft indigo halo
+    .logo-img { width: 64px; height: 64px; object-fit: contain; margin-bottom: 20px;
+      filter: drop-shadow(0 0 18px rgba(76, 79, 224, 0.35)); }
+    h1 {
+      font-family: var(--font-display, 'Space Grotesk', 'Inter', system-ui, sans-serif);
+      font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
+      color: #e8eaf4; margin: 0;
+    }
+    p {
+      font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+      font-size: 14px; color: #6b7280; margin: 6px 0 0;
+    }
   }
 
   .login-field {
     margin-bottom: 16px;
-    label { display: block; font-size: 13px; font-weight: 600; color: var(--admin-text-body); margin-bottom: 6px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #cfd2e4; margin-bottom: 6px; }
     input {
       width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--admin-border);
+      padding: 11px 13px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       font-size: 14px;
-      background: var(--admin-surface);
-      color: var(--admin-text);
+      background: rgba(255, 255, 255, 0.02);
+      color: #e8eaf4;
       outline: none;
-      transition: border-color 0.15s;
-      &:focus { border-color: #635bff; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
+      transition: border-color 0.15s, box-shadow 0.15s;
+      &::placeholder { color: #6b708e; }
+      &:focus { border-color: #4c4fe0; box-shadow: 0 0 0 3px rgba(76, 79, 224, 0.15); }
     }
   }
 
   .login-btn {
     width: 100%;
     padding: 12px;
-    background: var(--ion-color-primary);
+    background: #4c4fe0;
     color: #ffffff;
     border: none;
     border-radius: 8px;
@@ -309,15 +328,31 @@ ion-content { --background: var(--admin-content-bg); }
     font-weight: 600;
     cursor: pointer;
     margin-top: 8px;
-    transition: background 0.15s;
-    &:hover { background: var(--ion-color-primary-shade); }
-    &:disabled { background: var(--ion-color-primary-tint); cursor: not-allowed; }
+    transition: filter 0.15s, box-shadow 0.15s;
+    &:hover { filter: brightness(1.08); box-shadow: 0 6px 18px rgba(76, 79, 224, 0.35); }
+    &:active { filter: brightness(0.96); }
+    &:disabled { background: #2e2fa6; opacity: 0.55; cursor: not-allowed; filter: none; box-shadow: none; }
+  }
+
+  // De-emphasized demo credentials — a quiet text link, not a bordered button
+  .login-demo-link {
+    display: block;
+    margin: 18px auto 0;
+    padding: 4px 8px;
+    background: none;
+    border: none;
+    color: #9ba0bc;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s;
+    &:hover { color: #4c4fe0; }
   }
 
   .login-error {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #dc2626;
+    background: rgba(240, 85, 107, 0.12);
+    border: 1px solid rgba(240, 85, 107, 0.35);
+    color: #f0556b;
     padding: 10px 14px;
     border-radius: 8px;
     font-size: 13px;
@@ -660,15 +695,7 @@ body.dark-theme {
   .dash-panel-header { border-bottom-color: #334155; h2 { color: #f1f5f9; } }
   .dash-action-btn { background: #1e293b; border-color: #334155; color: #cbd5e1; &:hover { background: #2d2463; border-color: #4338ca; } }
 
-  .login-container { background: #0f172a; }
-  .login-card {
-    background: #1e293b; border-color: #334155;
-    .login-logo h1 { color: #f1f5f9; }
-    .login-logo p { color: #94a3b8; }
-    .login-field label { color: #cbd5e1; }
-    .login-field input { background: #0f172a; border-color: #334155; color: #f1f5f9; }
-    .login-error { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
-  }
+  // Login page is a self-contained brand hero (always Obsidian glass) — no theme override needed.
 
   .p-dialog {
     .p-dialog-header { background: #1e293b !important; color: #f1f5f9 !important; border-bottom-color: #334155 !important; }
