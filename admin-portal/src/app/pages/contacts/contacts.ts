@@ -120,9 +120,37 @@ interface Contact {
               <!-- Tags -->
               <div class="ct-tags-row">
                 @for (tag of selected()!.tags; track tag) {
-                  <span class="ct-tag" [ngClass]="'ct-tag--' + tag">{{ tagLabel(tag) }}</span>
+                  <button
+                    class="ct-tag ct-tag--btn"
+                    [ngClass]="'ct-tag--' + tag"
+                    (click)="toggleTag(tag)"
+                    [attr.aria-label]="'Remove ' + tagLabel(tag) + ' tag'"
+                    title="Remove tag">
+                    {{ tagLabel(tag) }}<span class="ct-tag-x" aria-hidden="true">×</span>
+                  </button>
                 }
-                <button class="ct-add-tag">+ Add Tag</button>
+                <div class="ct-tag-editor">
+                  <button
+                    class="ct-add-tag"
+                    [class.ct-add-tag--open]="tagEditorOpen()"
+                    [attr.aria-expanded]="tagEditorOpen()"
+                    (click)="tagEditorOpen.set(!tagEditorOpen())">+ Add Tag</button>
+                  @if (tagEditorOpen()) {
+                    <div class="ct-tag-menu" role="menu">
+                      @for (t of allTags; track t) {
+                        <button
+                          class="ct-tag-opt"
+                          role="menuitemcheckbox"
+                          [attr.aria-checked]="hasTag(t)"
+                          (click)="toggleTag(t)">
+                          <span class="ct-tag-opt-dot" [ngClass]="'ct-tag--' + t"></span>
+                          <span class="ct-tag-opt-label">{{ tagLabel(t) }}</span>
+                          @if (hasTag(t)) { <span class="ct-tag-opt-check" aria-hidden="true">✓</span> }
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
 
               <!-- Stats -->
@@ -363,13 +391,56 @@ interface Contact {
     .ct-tag--customer { color: var(--brand-secondary); background: rgba(20,184,166,0.14); }
     .ct-tag--vip { color: var(--brand-primary); background: rgba(99,102,241,0.16); }
     .ct-tag--blocked { color: #F87171; background: rgba(248,113,113,0.14); }
+    .ct-tag--btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: none; cursor: pointer; font-family: var(--font-body);
+      transition: opacity .15s;
+    }
+    .ct-tag--btn:hover { opacity: 0.78; }
+    .ct-tag-x { font-size: 13px; line-height: 1; opacity: 0.65; margin-right: -2px; }
+
+    .ct-tag-editor { position: relative; }
     .ct-add-tag {
-      padding: 3px 4px;
-      background: transparent; border: none;
+      padding: 4px 9px;
+      background: transparent; border: 1px dashed var(--border); border-radius: var(--radius-full);
       color: var(--brand-primary); font-family: var(--font-body);
       font-size: 12.5px; font-weight: 600; cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
     }
-    .ct-add-tag:hover { text-decoration: underline; }
+    .ct-add-tag:hover { border-color: var(--brand-primary); background: rgba(99,102,241,0.08); }
+    .ct-add-tag--open {
+      border-style: solid; border-color: var(--brand-primary);
+      background: rgba(99,102,241,0.12);
+    }
+    .ct-tag-menu {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+      min-width: 172px; padding: 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.38);
+      display: flex; flex-direction: column; gap: 2px;
+      animation: ct-menu-in .12s ease-out;
+    }
+    @keyframes ct-menu-in {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .ct-tag-opt {
+      display: flex; align-items: center; gap: 9px;
+      width: 100%; text-align: left;
+      padding: 7px 9px;
+      background: transparent; border: none; border-radius: var(--radius-sm, 6px);
+      color: var(--admin-text); font-family: var(--font-body);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: background .12s;
+    }
+    .ct-tag-opt:hover { background: var(--surface-2); }
+    .ct-tag-opt-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .ct-tag-opt-dot.ct-tag--customer { background: var(--brand-secondary); }
+    .ct-tag-opt-dot.ct-tag--vip { background: var(--brand-primary); }
+    .ct-tag-opt-dot.ct-tag--blocked { background: #F87171; }
+    .ct-tag-opt-label { flex: 1; }
+    .ct-tag-opt-check { color: var(--brand-primary); font-size: 13px; font-weight: 800; }
 
     /* Stats */
     .ct-stats {
@@ -464,6 +535,9 @@ export class ContactsPage {
   readonly query = signal('');
   readonly filter = signal<TagFilter>('all');
   readonly note = signal('');
+  readonly tagEditorOpen = signal(false);
+
+  readonly allTags: ContactTag[] = ['customer', 'vip', 'blocked'];
 
   // Palette for deterministic avatar tinting — indigo-leaning brand hues.
   private readonly avatarPalette = ['#6366F1', '#14B8A6', '#818CF8', '#0EA5A0', '#7C7EF2'];
@@ -537,6 +611,31 @@ export class ContactsPage {
   select(id: string | null): void {
     this.selectedId.set(id);
     this.note.set('');
+    this.tagEditorOpen.set(false);
+  }
+
+  hasTag(tag: ContactTag): boolean {
+    return this.selected()?.tags.includes(tag) ?? false;
+  }
+
+  /** Toggle a tag on the selected contact — powers the left-rail tag filter. */
+  toggleTag(tag: ContactTag): void {
+    const id = this.selectedId();
+    if (!id) return;
+    let added = false;
+    this.contacts.update(list =>
+      list.map(c => {
+        if (c.id !== id) return c;
+        const has = c.tags.includes(tag);
+        added = !has;
+        const tags = has ? c.tags.filter(t => t !== tag) : [...c.tags, tag];
+        return { ...c, tags };
+      }),
+    );
+    this.toast.show(
+      `${added ? 'Tagged' : 'Removed'} “${this.tagLabel(tag)}”`,
+      added ? 'success' : 'info',
+    );
   }
 
   saveNote(): void {
