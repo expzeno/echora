@@ -88,6 +88,27 @@ import { Global } from '../../services/global';
               </div>
             </div>
           </div>
+
+          <div class="dash-col">
+            <div class="dash-panel">
+              <div class="dash-panel-header">
+                <h2>Recent Activity</h2>
+              </div>
+              <div class="dash-panel-body dash-panel-body--flush">
+                <div class="dash-feed">
+                  @for (event of activities; track event.text) {
+                    <div class="dash-feed-row">
+                      <div class="dash-feed-icon" [style.background]="event.color + '26'">
+                        <span>{{ event.icon }}</span>
+                      </div>
+                      <div class="dash-feed-text">{{ event.text }}</div>
+                      <div class="dash-feed-time">{{ event.time }}</div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       }
     </div></ion-content>
@@ -100,6 +121,17 @@ export class DashboardPage implements OnInit {
   readonly loading = signal(true);
   readonly today = new Date();
   readonly stats = signal<any>({});
+
+  readonly activities = [
+    { icon: '💬', color: '#14B8A6', text: 'New conversation from +60 12-345 6789', time: '2m ago' },
+    { icon: '⚡', color: '#6366F1', text: 'AI Agent replied to Omar Rashid — order inquiry', time: '4m ago' },
+    { icon: '✅', color: '#22C55E', text: 'Conversation resolved — ORDER-4821 by Sarah', time: '8m ago' },
+    { icon: '💬', color: '#14B8A6', text: 'New conversation from +60 17-891 2345', time: '12m ago' },
+    { icon: '👤', color: '#F59E0B', text: 'Human takeover — Sarah handling ORDER-5502', time: '15m ago' },
+    { icon: '⚡', color: '#6366F1', text: 'AI Agent resolved billing question automatically', time: '22m ago' },
+    { icon: '🔗', color: '#94A3B8', text: 'HubSpot sync completed — 3 contacts updated', time: '31m ago' },
+    { icon: '💬', color: '#14B8A6', text: 'New conversation from +60 19-234 5678', time: '45m ago' },
+  ];
 
   async ngOnInit() {
     try {

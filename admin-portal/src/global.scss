@@ -565,6 +565,58 @@ ion-content { --background: var(--admin-content-bg); }
   .dash-action-btn { width: 100%; }
 }
 
+// ─── Recent Activity Feed ───
+.dash-panel-body--flush { padding: 6px; }
+
+.dash-feed {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-feed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+  &:hover { background: var(--admin-bg); }
+}
+
+.dash-feed-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.dash-feed-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--admin-text-body);
+  line-height: 1.35;
+}
+
+.dash-feed-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--admin-text-muted);
+  white-space: nowrap;
+}
+
+.dash-feed::-webkit-scrollbar { width: 6px; }
+.dash-feed::-webkit-scrollbar-thumb { background: var(--admin-border); border-radius: 3px; }
+
 // ─── Empty State ───
 .empty-state {
   display: flex;
