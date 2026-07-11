@@ -552,6 +552,14 @@ ion-content { --background: var(--admin-content-bg); }
   &:hover { background: var(--admin-divider); border-color: var(--brand-primary); color: var(--admin-text); }
 }
 
+@media (max-width: 768px) {
+  .dash-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .dash-action-btn { width: 100%; }
+}
+
 // ─── Empty State ───
 .empty-state {
   display: flex;
