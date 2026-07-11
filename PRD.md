@@ -50,13 +50,15 @@ skeleton is standing.
 ## Current State (2026-07-11)
 - Project bootstrapped: git repo, `CONVERSATIONS.json`, `docs/INDEX.md`, this PRD, `CLAUDE.md`.
 - Brand **research** landed (`docs/brand-research.md`); full `BRAND_GUIDE.md` still pending from Design Expert.
-- **Not yet scaffolded.** Stack confirmed: Express.js + Prisma backend (aligns with the standard
-  `zentemplate` scaffold) + Ionic + Angular frontend. Backend scaffold to be produced on the
-  Express stack before Phase 1 build.
-- Infra (port / Nginx / PM2) not yet provisioned — deferred until backend entrypoint exists.
+- **Backend scaffolded** at `backend/` on the confirmed **Express.js + Prisma** stack (aligns with the
+  standard `zentemplate` scaffold): `src/server.js` entrypoint with `modules/`, `workers/`, `shared/`,
+  and `prisma/main/schema.prisma` carrying the Echora data model. Package name `echora-api`.
+- **Admin portal scaffolded** (`admin-portal/`) with Echora brand tokens.
+- Frontend agent console (`echora-app`, Ionic + Angular + Capacitor) still pending.
+- Infra (port / Nginx / PM2) not yet provisioned — deferred until backend entrypoint is wired to a port.
 
 ## Pending / Next
 - [ ] Design Expert to produce `BRAND_GUIDE.md` from `docs/brand-research.md`.
-- [ ] Confirm Express scaffold path (template vs. hand-scaffold) and stand up `backend/`.
+- [x] Confirm Express scaffold path and stand up `backend/` — done (Express + Prisma scaffold committed).
 - [ ] Provision infra (backend port, `apiec.labzeno.com`, PM2) once entrypoint exists.
 - [ ] Build Phase 1 backend skeleton (items 1–6 above).
