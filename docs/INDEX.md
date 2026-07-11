@@ -9,3 +9,9 @@ Table of contents for all project knowledge. Every doc must be listed here with 
   identity in brand-research.md. Lives at project root per APP_BRANDING_STANDARD.md §1. Keep in sync
   with brand-research.md (Design Expert, 2026-07-11).
 - `../PRD.md` — product requirements; read TL;DR + Agent Quick-Find + Current State at session start.
+
+## Design Audit Log
+
+| Date | Auditor | Scope | Status |
+|---|---|---|---|
+| 2026-07-11 | Design Expert | admin-portal scaffold brand tokens (variables.scss, index.html) | ✅ All tokens verified correct vs BRAND_GUIDE |
