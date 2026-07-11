@@ -17,9 +17,11 @@ interface Conversation {
   lastMessageAt: number;      // epoch ms
 }
 
+type MessageSender = 'customer' | 'ai' | 'human';
+
 interface ThreadMessage {
   id: string;
-  from: 'customer' | 'agent';
+  from: MessageSender;
   body: string;
   at: number;
 }
@@ -119,15 +121,37 @@ interface ThreadMessage {
                 </div>
               </div>
               <div class="conv-detail-actions">
+                <div class="conv-mode-toggle" role="group" aria-label="Reply mode">
+                  <button
+                    class="conv-mode-btn conv-mode-btn--ai"
+                    [class.conv-mode-btn--active]="mode() === 'ai'"
+                    (click)="mode.set('ai')">⚡ AI</button>
+                  <button
+                    class="conv-mode-btn conv-mode-btn--human"
+                    [class.conv-mode-btn--active]="mode() === 'human'"
+                    (click)="mode.set('human')">👤 Human</button>
+                </div>
                 <span class="conv-badge" [ngClass]="'conv-badge--' + selected()!.status">{{ selected()!.status }}</span>
                 <button class="conv-back" (click)="select(null)" aria-label="Back to list">←</button>
               </div>
             </header>
 
             <div class="conv-thread">
-              @for (m of thread(); track m.id) {
-                <div class="conv-msg" [class.conv-msg--out]="m.from === 'agent'">
-                  <div class="conv-bubble">{{ m.body }}</div>
+              @for (m of thread(); track m.id; let i = $index) {
+                <div
+                  class="conv-msg"
+                  [class.conv-msg--out]="m.from === 'ai' || m.from === 'human'"
+                  [class.conv-msg--ai]="m.from === 'ai'"
+                  [class.conv-msg--human]="m.from === 'human'">
+                  @if ((m.from === 'ai' || m.from === 'human') && (i === 0 || thread()[i - 1].from !== m.from)) {
+                    <div class="conv-msg-label">{{ m.from === 'ai' ? 'AI Agent' : 'You' }}</div>
+                  }
+                  <div class="conv-bubble">
+                    @if (m.from === 'ai') {
+                      <span class="conv-ai-icon" aria-hidden="true">⚡</span>
+                    }
+                    <span class="conv-bubble-text">{{ m.body }}</span>
+                  </div>
                   <div class="conv-msg-time">{{ timeAgo(m.at) }}</div>
                 </div>
               }
@@ -139,7 +163,7 @@ interface ThreadMessage {
                 rows="1"
                 [ngModel]="draft()"
                 (ngModelChange)="draft.set($event)"
-                placeholder="Type a reply…"></textarea>
+                [placeholder]="mode() === 'human' ? 'Replying as human agent…' : 'Type a reply…'"></textarea>
               <button class="conv-send" [disabled]="!draft().trim()" (click)="send()">Send</button>
             </div>
           }
@@ -334,11 +358,60 @@ interface ThreadMessage {
       color: #fff; background: var(--brand-primary); border-color: var(--brand-primary);
       border-bottom-left-radius: 14px; border-bottom-right-radius: 4px;
     }
+
+    /* ── AI vs HUMAN attribution ──────────────────────────────── */
+    .conv-msg--ai .conv-bubble {
+      background: rgba(99, 102, 241, 0.15);   /* Indigo 15% */
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: var(--admin-text);
+      border-bottom-left-radius: 14px; border-bottom-right-radius: 4px;
+    }
+    .conv-msg--human .conv-bubble {
+      background: var(--brand-primary);        /* solid Indigo */
+      color: #fff;
+      border-color: var(--brand-primary);
+      border-bottom-left-radius: 14px; border-bottom-right-radius: 4px;
+    }
+    .conv-ai-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; line-height: 1; margin-right: 5px;
+      transform: translateY(0.5px);
+      filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.45));
+    }
+    .conv-msg-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.2px;
+      color: var(--admin-text-secondary);
+      margin-bottom: 3px; text-align: right;
+    }
+    .conv-msg--ai .conv-msg-label { text-align: right; color: #6366F1; }
+
     .conv-msg-time {
       font-size: 10.5px; color: var(--admin-text-muted);
       margin-top: 4px; padding: 0 4px;
     }
     .conv-msg--out .conv-msg-time { text-align: right; }
+
+    /* ── HANDOVER TOGGLE ──────────────────────────────────────── */
+    .conv-mode-toggle {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 2px; border-radius: var(--radius-full);
+      background: var(--surface-2); border: 1px solid var(--border);
+    }
+    .conv-mode-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 11px; border: none; border-radius: var(--radius-full);
+      background: transparent; cursor: pointer;
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      color: var(--admin-text-secondary);
+      transition: background .15s, color .15s;
+    }
+    .conv-mode-btn:hover { color: var(--admin-text); }
+    .conv-mode-btn--ai.conv-mode-btn--active {
+      background: var(--brand-secondary, #14B8A6); color: #fff;   /* Teal */
+    }
+    .conv-mode-btn--human.conv-mode-btn--active {
+      background: var(--brand-accent, #F59E0B); color: var(--ec-obsidian, #0E1020);  /* Amber */
+    }
 
     .conv-composer {
       display: flex; align-items: flex-end; gap: 10px;
@@ -391,6 +464,7 @@ export class ConversationsPage {
   readonly filter = signal<ConvFilter>('all');
   readonly selectedId = signal<string | null>(null);
   readonly draft = signal('');
+  readonly mode = signal<'ai' | 'human'>('ai');
 
   // Placeholder data — real inbox wiring lands with the messaging service.
   private readonly now = Date.now();
@@ -420,10 +494,11 @@ export class ConversationsPage {
     const c = this.selected();
     if (!c) return [];
     return [
-      { id: 'm1', from: 'customer', body: c.preview, at: c.lastMessageAt - 9 * 60_000 },
-      { id: 'm2', from: 'agent', body: 'Thanks for reaching out — let me check that for you right away.', at: c.lastMessageAt - 6 * 60_000 },
-      { id: 'm3', from: 'customer', body: 'Appreciate it 🙏', at: c.lastMessageAt - 3 * 60_000 },
-      { id: 'm4', from: 'agent', body: 'All sorted on my end. Anything else I can help with?', at: c.lastMessageAt },
+      { id: 'm1', from: 'customer', body: 'Hi, I need help with my order', at: c.lastMessageAt - 12 * 60_000 },
+      { id: 'm2', from: 'ai', body: "Hello! I'm Echora AI. I can help you with that. Could you share your order number?", at: c.lastMessageAt - 10 * 60_000 },
+      { id: 'm3', from: 'customer', body: "It's ORDER-4821", at: c.lastMessageAt - 8 * 60_000 },
+      { id: 'm4', from: 'ai', body: 'Found it! Your order is currently being processed and will ship within 24 hours.', at: c.lastMessageAt - 6 * 60_000 },
+      { id: 'm5', from: 'human', body: "Just jumping in — I've escalated this to our warehouse team. You'll get an update by EOD.", at: c.lastMessageAt - 2 * 60_000 },
     ];
   });
 
