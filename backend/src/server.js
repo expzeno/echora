@@ -7,6 +7,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
+import http from 'node:http';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,12 @@ import { setCz } from './lib/czBridge.js';
 import { flushModelLogBuffer, setMicroBufferReady } from './lib/logQueueProducer.js';
 import { flushAccessLogBuffer } from './shared/helpers/accessLogHelper.js';
 import { accessLogMiddleware } from './shared/middleware/accessLog.js';
+
+// ─── WhatsApp webhook + realtime (Phase 1) ───
+import { whatsappWebhookRoutes } from './modules/whatsapp/webhook.routes.js';
+import { initGateway } from './modules/realtime/gateway.js';
+// Side-effect import: boots the BullMQ inbound worker in-process (dev).
+import './workers/inbound.worker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +46,13 @@ app.use(helmet());
 app.use(compression());
 app.use(corsPreflightGuard);
 app.use(cors(corsOptions));
+
+// ─── WhatsApp webhook — MUST mount before express.json ───
+// The POST handler validates an HMAC over the raw request body (express.raw is
+// attached locally on the route). Mounting here keeps the global JSON parser
+// from consuming the stream first, which would break signature verification.
+app.use('/api/v1/whatsapp/webhook', whatsappWebhookRoutes);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -173,8 +187,13 @@ async function init() {
   setMicroBufferReady(true);
   spawnLogWorker();
 
+  // ─── HTTP server + Socket.IO gateway ───
+  // Socket.IO needs the raw http.Server (not app.listen's return) to attach.
+  const httpServer = http.createServer(app);
+  initGateway(httpServer);
+
   const startTime = Date.now();
-  const server = app.listen(PORT, () => {
+  const server = httpServer.listen(PORT, () => {
     const bootMs = Date.now() - startTime;
     logger.info(`[boot] echora-api listening on :${PORT} (${bootMs}ms)`);
     if (process.send) process.send('ready');
