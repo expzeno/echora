@@ -3,12 +3,12 @@
 ## TL;DR
 Echora is a **custom WhatsApp customer support portal** — a backoffice / agent dashboard for
 managing customer conversations that arrive over WhatsApp. Phase 1 delivers the backend skeleton:
-a NestJS API with Postgres, Redis-backed queues, a WhatsApp webhook endpoint, and auth. The
+an Express.js API (with Prisma ORM) with Postgres, Redis-backed queues, a WhatsApp webhook endpoint, and auth. The
 frontend (Ionic + Angular + Capacitor) is the agent-facing console, built after the backend
 skeleton is standing.
 
 ## Agent Quick-Find
-- **Backend:** `echora` repo — NestJS. Entry work in `backend/`.
+- **Backend:** `echora` repo — Express.js + Prisma ORM. Entry work in `backend/`.
 - **Frontend:** `echora-app` repo — Ionic + Angular + Capacitor agent console.
 - **DB:** PostgreSQL, database `echora_db`.
 - **Queue:** Redis + BullMQ.
@@ -26,7 +26,7 @@ skeleton is standing.
 ## Tech Stack
 | Layer | Choice |
 |---|---|
-| Backend framework | **NestJS** (Node.js) |
+| Backend framework | **Express.js** (Node.js) + **Prisma ORM** |
 | Database | **PostgreSQL** (`echora_db`) |
 | Cache / queue store | **Redis** |
 | Job queue | **BullMQ** |
@@ -36,7 +36,7 @@ skeleton is standing.
 | Environment | **development only** (this server is DEV) |
 
 ## Phase 1 Focus — Backend Skeleton
-1. **NestJS project** — scaffold, module structure, config module reading `ECHORA_*` env vars.
+1. **Express project** — scaffold, module structure, config module reading `ECHORA_*` env vars.
 2. **Postgres schema** — core entities: agents/users, customers, conversations, messages, queues.
 3. **Auth** — agent login (JWT), roles (agent / lead / admin).
 4. **WhatsApp webhook endpoint** — receive inbound WhatsApp messages, verify signature, enqueue.
@@ -50,13 +50,13 @@ skeleton is standing.
 ## Current State (2026-07-11)
 - Project bootstrapped: git repo, `CONVERSATIONS.json`, `docs/INDEX.md`, this PRD, `CLAUDE.md`.
 - Brand **research** landed (`docs/brand-research.md`); full `BRAND_GUIDE.md` still pending from Design Expert.
-- **Not yet scaffolded.** Stack decision pending: PRD targets NestJS + Ionic; the standard
-  `zentemplate` scaffold produces Express + Angular. Backend scaffold to be produced on the
-  correct (NestJS) stack before Phase 1 build.
+- **Not yet scaffolded.** Stack confirmed: Express.js + Prisma backend (aligns with the standard
+  `zentemplate` scaffold) + Ionic + Angular frontend. Backend scaffold to be produced on the
+  Express stack before Phase 1 build.
 - Infra (port / Nginx / PM2) not yet provisioned — deferred until backend entrypoint exists.
 
 ## Pending / Next
 - [ ] Design Expert to produce `BRAND_GUIDE.md` from `docs/brand-research.md`.
-- [ ] Confirm NestJS scaffold path (template vs. hand-scaffold) and stand up `backend/`.
+- [ ] Confirm Express scaffold path (template vs. hand-scaffold) and stand up `backend/`.
 - [ ] Provision infra (backend port, `apiec.labzeno.com`, PM2) once entrypoint exists.
 - [ ] Build Phase 1 backend skeleton (items 1–6 above).
