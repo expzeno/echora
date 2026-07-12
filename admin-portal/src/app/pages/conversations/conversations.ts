@@ -93,6 +93,7 @@ interface ThreadMessage {
               <button
                 class="conv-card"
                 [class.conv-card--active]="selectedId() === c.id"
+                [class.conv-card--unread]="unreadFor(c) > 0"
                 (click)="select(c.id)">
                 <span class="conv-dot" [ngClass]="'conv-dot--' + c.status" [attr.aria-label]="c.status"></span>
                 <div class="conv-card-body">
@@ -102,8 +103,12 @@ interface ThreadMessage {
                   </div>
                   <div class="conv-card-row">
                     <span class="conv-card-preview">{{ c.preview }}</span>
-                    @if (c.unreadCount > 0) {
-                      <span class="conv-unread">{{ c.unreadCount }}</span>
+                    @if (unreadFor(c); as unread) {
+                      @if (unread > 0) {
+                        <span
+                          class="conv-unread"
+                          [attr.aria-label]="unread + ' unread messages'">{{ unread > 99 ? '99+' : unread }}</span>
+                      }
                     }
                   </div>
                 </div>
@@ -356,8 +361,17 @@ interface ThreadMessage {
       flex-shrink: 0; min-width: 18px; height: 18px; padding: 0 5px;
       display: inline-flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 700; line-height: 1;
-      color: var(--ec-obsidian, #0E1020);
-      background: var(--brand-accent); border-radius: var(--radius-full);
+      color: #fff;
+      background: var(--brand-secondary, #14B8A6);   /* Teal */
+      border-radius: var(--radius-full);
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.14);
+    }
+
+    /* ── UNREAD LIST ITEM ─────────────────────────────────────── */
+    /* Bolder name + preview so unread threads read as "new" at a glance. */
+    .conv-card--unread .conv-card-phone { font-weight: 700; }
+    .conv-card--unread .conv-card-preview {
+      color: var(--admin-text); font-weight: 600;
     }
     .conv-empty-list {
       padding: 32px 12px; text-align: center;
@@ -631,6 +645,9 @@ export class ConversationsPage implements OnInit, OnDestroy {
   // to message:new. Both are torn down whenever the selected thread changes.
   private joinedRoom: string | null = null;
   private messageSub: Subscription | null = null;
+  // Component-lifetime subscription to message:new for list-level unread
+  // tracking — fires for conversations that are NOT the open thread.
+  private listMessageSub: Subscription | null = null;
 
   readonly tabs: { key: ConvFilter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -678,8 +695,49 @@ export class ConversationsPage implements OnInit, OnDestroy {
   readonly listLoading = signal(false);
   readonly listError = signal(false);
 
+  // ── Real-time unread badges ───────────────────────────────────
+  // Map<conversationId, unread delta> accumulated from message:new events
+  // that land while the conversation is NOT the open thread. Cleared when
+  // the thread is selected. Rendered as a teal count badge on the list item.
+  readonly unreadCounts = signal(new Map<string, number>());
+
   ngOnInit(): void {
     this.loadConversations();
+    // Listen for the whole session so badges accrue on background threads,
+    // independent of whichever conversation room is currently joined.
+    this.listMessageSub = this.socket
+      .on<MessageNewPayload>('message:new')
+      .subscribe((payload) => this.onListMessage(payload));
+  }
+
+  /**
+   * List-level handler for real-time messages. Ignores the open thread (that
+   * is handled by onMessageNew, which appends to the visible thread) and, for
+   * every other conversation, bumps its unread badge and refreshes the list
+   * preview + ordering so the newest activity floats to the top.
+   */
+  private onListMessage(payload: MessageNewPayload): void {
+    if (!payload?.message) return;
+    const id = payload.conversationId;
+    if (id === this.selectedId()) return;   // active thread handled elsewhere
+
+    this.unreadCounts.update((m) => {
+      const next = new Map(m);
+      next.set(id, (next.get(id) ?? 0) + 1);
+      return next;
+    });
+
+    const incoming = this.toThreadMessage(payload.message as ApiMessage);
+    this.conversations.update((list) =>
+      list.map((x) =>
+        x.id === id ? { ...x, preview: incoming.body, lastMessageAt: incoming.at } : x,
+      ),
+    );
+  }
+
+  /** Total unread for a list item: on-load API count plus live deltas. */
+  unreadFor(c: Conversation): number {
+    return c.unreadCount + (this.unreadCounts().get(c.id) ?? 0);
   }
 
   /** Fetch the conversation list from the API and map into the view model. */
@@ -820,6 +878,14 @@ export class ConversationsPage implements OnInit, OnDestroy {
       this.conversations.update(list =>
         list.map(c => (c.id === id ? { ...c, unreadCount: 0 } : c)),
       );
+      // Clear the live unread badge for the thread we're opening.
+      if (this.unreadCounts().has(id)) {
+        this.unreadCounts.update(m => {
+          const next = new Map(m);
+          next.delete(id);
+          return next;
+        });
+      }
       const c = this.conversations().find(x => x.id === id);
       if (c) {
         this.loadThread(c);
@@ -883,6 +949,8 @@ export class ConversationsPage implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.leaveRoom();
+    this.listMessageSub?.unsubscribe();
+    this.listMessageSub = null;
   }
 
   /** Enter submits; Shift+Enter inserts a newline. */
