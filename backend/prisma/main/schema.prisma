@@ -264,6 +264,8 @@ model Agent {
   isActive       Boolean      @default(true) @map("is_active")
   failedAttempts Int          @default(0) @map("failed_attempts")
   lockedUntil    DateTime?    @map("locked_until")
+  systemPrompt   String?      @map("system_prompt")
+  model          String?      @default("claude-sonnet-4-6")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
   deletedAt      DateTime?    @map("deleted_at")

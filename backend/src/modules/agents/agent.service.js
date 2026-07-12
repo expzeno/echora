@@ -11,6 +11,8 @@ const AGENT_SELECT = {
   role: true,
   status: true,
   isActive: true,
+  systemPrompt: true,
+  model: true,
   createdAt: true,
   updatedAt: true,
   deletedAt: true,
@@ -47,6 +49,11 @@ export class AgentService {
     const role = VALID_ROLES.includes(data.role) ? data.role : 'agent';
     const status = VALID_STATUS.includes(data.status) ? data.status : 'active';
 
+    // Optional AI configuration. systemPrompt is free-form; model falls back to the
+    // schema default when omitted.
+    const systemPrompt = data.systemPrompt === undefined ? undefined : (data.systemPrompt ?? '').toString().trim() || null;
+    const model = data.model === undefined ? undefined : (data.model ?? '').toString().trim() || null;
+
     // passwordHash is required by the schema. Use the provided password, or seed a
     // random one the agent can reset later — an agent is never created without a hash.
     const rawPassword = (data.password ?? '').toString() || crypto.randomUUID();
@@ -63,6 +70,8 @@ export class AgentService {
         status,
         passwordHash,
         isActive: data.isActive === undefined ? true : !!data.isActive,
+        ...(systemPrompt !== undefined ? { systemPrompt } : {}),
+        ...(model !== undefined ? { model } : {}),
       },
       select: AGENT_SELECT,
     });
@@ -70,7 +79,7 @@ export class AgentService {
     return { ok: true, detail: agent };
   }
 
-  // PATCH /api/v1/agents/:id — updatable: displayName|name, role, status, isActive
+  // PATCH /api/v1/agents/:id — updatable: displayName|name, role, status, isActive, systemPrompt, model
   static async update(querier, id, data) {
     const existing = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
     if (!existing) return { ok: false, message: 'Agent not found', code: 'NotFound' };
@@ -94,6 +103,12 @@ export class AgentService {
       patch.status = data.status;
     }
     if (data.isActive !== undefined) patch.isActive = !!data.isActive;
+    if (data.systemPrompt !== undefined) {
+      patch.systemPrompt = (data.systemPrompt ?? '').toString().trim() || null;
+    }
+    if (data.model !== undefined) {
+      patch.model = (data.model ?? '').toString().trim() || null;
+    }
 
     if (data.password) patch.passwordHash = await bcrypt.hash(data.password.toString(), 10);
 
