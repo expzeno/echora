@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { ConversationService, Conversation as ApiConversation, Message as ApiMessage } from '../../services/conversation.service';
 import { AgentService, Agent } from '../../services/agent.service';
+import { QuickReplyService, QuickReply } from '../../services/quick-reply.service';
 import { SocketService } from '../../services/socket.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
@@ -300,13 +301,48 @@ interface ThreadMessage {
             }
 
             <div class="conv-composer">
+              @if (qrOpen()) {
+                <div class="conv-qr-pop" role="listbox" aria-label="Quick replies">
+                  <div class="conv-qr-pop-head">
+                    <span class="conv-qr-pop-title">⚡ Quick replies</span>
+                    @if (qrSlash()) { <span class="conv-qr-pop-hint">filtering “{{ draft().slice(1) }}”</span> }
+                  </div>
+                  <div class="conv-qr-pop-list">
+                    @for (qr of filteredReplies(); track qr.id) {
+                      <button
+                        type="button"
+                        class="conv-qr-item"
+                        role="option"
+                        (click)="selectQuickReply(qr)">
+                        <span class="conv-qr-item-title">{{ qr.title }}</span>
+                        <span class="conv-qr-item-body">{{ qr.body }}</span>
+                      </button>
+                    } @empty {
+                      <div class="conv-qr-empty">No matching quick replies</div>
+                    }
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="conv-qr-backdrop"
+                  aria-label="Close quick replies"
+                  (click)="closeQuickReplies()"></button>
+              }
+              <button
+                type="button"
+                class="conv-qr-btn"
+                [class.conv-qr-btn--active]="qrOpen()"
+                [attr.aria-expanded]="qrOpen()"
+                title="Quick replies"
+                aria-label="Insert quick reply"
+                (click)="toggleQuickReplies()">⚡</button>
               <textarea
                 class="conv-composer-input"
                 rows="1"
                 [ngModel]="draft()"
-                (ngModelChange)="draft.set($event)"
+                (ngModelChange)="onDraftChange($event)"
                 (keydown)="onComposerKeydown($event)"
-                [placeholder]="mode() === 'human' ? 'Replying as human agent…' : 'Type a reply…'"></textarea>
+                [placeholder]="mode() === 'human' ? 'Replying as human agent… (/ for quick replies)' : 'Type a reply… (/ for quick replies)'"></textarea>
               <button class="conv-send" [disabled]="!draft().trim() || messagesLoading()" (click)="send()">Send</button>
             </div>
           }
@@ -677,6 +713,82 @@ interface ThreadMessage {
       display: flex; align-items: flex-end; gap: 10px;
       padding: 14px 18px;
       border-top: 1px solid var(--border); background: var(--surface);
+      position: relative;
+    }
+
+    /* ── QUICK REPLIES (⚡ picker) ──────────────────────────────── */
+    .conv-qr-btn {
+      flex-shrink: 0;
+      width: 42px; height: 42px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--app-bg);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      color: var(--brand-primary); font-size: 18px; line-height: 1;
+      cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+    }
+    .conv-qr-btn:hover {
+      border-color: var(--brand-primary);
+      background: rgba(20,184,166,0.08);
+    }
+    .conv-qr-btn--active {
+      border-color: var(--brand-primary);
+      background: rgba(20,184,166,0.14);
+    }
+    .conv-qr-backdrop {
+      position: fixed; inset: 0; z-index: 40;
+      background: transparent; border: none; cursor: default; padding: 0;
+    }
+    .conv-qr-pop {
+      position: absolute; z-index: 50;
+      left: 18px; right: 18px; bottom: calc(100% - 6px);
+      max-width: 460px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.34);
+      overflow: hidden;
+    }
+    .conv-qr-pop-head {
+      display: flex; align-items: baseline; gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border); background: var(--surface-2);
+    }
+    .conv-qr-pop-title {
+      font-family: var(--font-display); font-size: 13px; font-weight: 600;
+      color: var(--admin-text);
+    }
+    .conv-qr-pop-hint {
+      font-size: 12px; color: var(--admin-text-muted);
+    }
+    .conv-qr-pop-list {
+      max-height: 268px; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .conv-qr-item {
+      display: flex; flex-direction: column; gap: 3px;
+      padding: 10px 14px; text-align: left;
+      background: transparent; border: none;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background .12s;
+    }
+    .conv-qr-item:last-child { border-bottom: none; }
+    .conv-qr-item:hover { background: rgba(20,184,166,0.08); }
+    .conv-qr-item-title {
+      font-size: 13.5px; font-weight: 600; color: var(--admin-text);
+    }
+    .conv-qr-item-body {
+      font-size: 12.5px; color: var(--admin-text-muted); line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .conv-qr-empty {
+      padding: 16px 14px; text-align: center;
+      font-size: 13px; color: var(--admin-text-muted);
+    }
+    /* Hide the ⚡ button in the main composer row on mobile; the slash (/) trigger
+       still opens the same picker on small screens. */
+    @media (max-width: 640px) {
+      .conv-qr-btn { display: none; }
+      .conv-qr-pop { left: 12px; right: 12px; }
     }
     .conv-composer-input {
       flex: 1; resize: none; max-height: 120px;
@@ -785,6 +897,7 @@ export class ConversationsPage implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly api = inject(ConversationService);
   private readonly agentApi = inject(AgentService);
+  private readonly quickReplyApi = inject(QuickReplyService);
   private readonly socket = inject(SocketService);
   private readonly host = inject(ElementRef<HTMLElement>);
 
@@ -822,6 +935,25 @@ export class ConversationsPage implements OnInit, OnDestroy {
   readonly draft = signal('');
   readonly mode = signal<'ai' | 'human'>('ai');
   readonly statusUpdating = signal(false);
+
+  // ── Quick replies (canned responses) ──────────────────────────
+  // `quickReplies` is fetched once on load; `qrOpen` toggles the composer
+  // popover (opened via the ⚡ button or by typing `/`). When the draft starts
+  // with `/`, `filteredReplies` narrows the list by the text after the slash.
+  readonly quickReplies = signal<QuickReply[]>([]);
+  readonly qrOpen = signal(false);
+  private qrViaSlash = false;
+  readonly qrSlash = computed(() => this.draft().startsWith('/'));
+  readonly filteredReplies = computed(() => {
+    const all = this.quickReplies();
+    const d = this.draft();
+    if (!d.startsWith('/')) return all;
+    const q = d.slice(1).trim().toLowerCase();
+    if (!q) return all;
+    return all.filter(
+      (r) => r.title.toLowerCase().includes(q) || r.body.toLowerCase().includes(q),
+    );
+  });
 
   // ── Assignee picker ───────────────────────────────────────────
   // `agents` is the roster fetched once on load; `assignOpen` toggles the
@@ -863,6 +995,7 @@ export class ConversationsPage implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadConversations();
     this.loadAgents();
+    this.loadQuickReplies();
     // Subscribe to the company-wide feed so badges accrue on background
     // threads, independent of whichever conversation room is currently joined.
     // joinCompany() ensures the socket is connected (the backend auto-joins
@@ -1048,6 +1181,51 @@ export class ConversationsPage implements OnInit, OnDestroy {
     });
   }
 
+  loadQuickReplies(): void {
+    this.quickReplyApi.getQuickReplies().subscribe({
+      next: (list) => this.quickReplies.set(list),
+      error: () => { /* picker simply shows "No matching quick replies" */ },
+    });
+  }
+
+  /** Toggle the quick-reply popover via the ⚡ button (not slash-driven). */
+  toggleQuickReplies(): void {
+    this.qrViaSlash = false;
+    this.qrOpen.update((v) => !v);
+  }
+
+  closeQuickReplies(): void {
+    this.qrViaSlash = false;
+    this.qrOpen.set(false);
+  }
+
+  /** Draft change handler — also drives the `/` quick-reply trigger. */
+  onDraftChange(value: string): void {
+    this.draft.set(value);
+    if (value.startsWith('/')) {
+      this.qrViaSlash = true;
+      this.qrOpen.set(true);
+    } else if (this.qrViaSlash) {
+      // The slash was cleared — dismiss the popover it opened.
+      this.qrViaSlash = false;
+      this.qrOpen.set(false);
+    }
+  }
+
+  /** Insert the selected canned response into the composer and refocus it. */
+  selectQuickReply(qr: QuickReply): void {
+    this.draft.set(qr.body);
+    this.qrViaSlash = false;
+    this.qrOpen.set(false);
+    setTimeout(() => {
+      const el = this.host.nativeElement.querySelector('.conv-composer-input') as HTMLTextAreaElement | null;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    });
+  }
+
   /** Toggle the assignee dropdown open/closed. */
   toggleAssign(ev: Event): void {
     ev.stopPropagation();
@@ -1203,8 +1381,22 @@ export class ConversationsPage implements OnInit, OnDestroy {
 
   /** Enter submits; Shift+Enter inserts a newline. */
   onComposerKeydown(ev: KeyboardEvent): void {
+    // Escape dismisses the quick-reply popover before anything else.
+    if (ev.key === 'Escape' && this.qrOpen()) {
+      ev.preventDefault();
+      this.closeQuickReplies();
+      return;
+    }
     if (ev.key === 'Enter' && !ev.shiftKey) {
       ev.preventDefault();
+      // With the slash-triggered picker open, Enter accepts the top match
+      // instead of sending the literal `/…` command.
+      if (this.qrOpen() && this.qrViaSlash) {
+        const first = this.filteredReplies()[0];
+        if (first) { this.selectQuickReply(first); return; }
+        this.closeQuickReplies();
+        return;
+      }
       this.send();
     }
   }

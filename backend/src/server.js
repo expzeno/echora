@@ -97,6 +97,7 @@ import { merchantRoutes } from './modules/merchant/merchant.routes.js';
 import { conversationRoutes } from './modules/conversations/conversations.routes.js';
 import { agentRoutes } from './modules/agents/agent.routes.js';
 import { whatsappNumberRoutes } from './modules/whatsapp-numbers/whatsapp-number.routes.js';
+import { quickReplyRoutes } from './modules/quick-replies/quick-reply.routes.js';
 import { feedbackRoutes } from './modules/feedback/feedback.routes.js';
 import { custPublicRoutes } from './modules/customer/custPublic.routes.js';
 import { custProfileRoutes } from './modules/customer/custProfile.routes.js';
@@ -133,6 +134,7 @@ if (mountAll || portal === 'admin') {
   app.use('/api/v1/conversations', conversationRoutes);
   app.use('/api/v1/agents', agentRoutes);
   app.use('/api/v1/whatsapp-numbers', whatsappNumberRoutes);
+  app.use('/api/v1/quick-replies', quickReplyRoutes);
 }
 if (mountAll || portal === 'customer') {
   app.use('/customer/access', customerAuthRoutes);

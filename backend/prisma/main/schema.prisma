@@ -375,6 +375,17 @@ model ThirdPartyIntegration {
   @@map("third_party_integrations")
 }
 
+// Canned responses agents can insert into the composer (quick replies).
+model QuickReply {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(120)
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("quick_replies")
+}
+
 // ─── Add your business models below ───
 // Conventions:
 //   - Always use @@map("snake_case_table_name")
