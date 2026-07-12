@@ -703,10 +703,14 @@ export class ConversationsPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadConversations();
-    // Listen for the whole session so badges accrue on background threads,
-    // independent of whichever conversation room is currently joined.
+    // Subscribe to the company-wide feed so badges accrue on background
+    // threads, independent of whichever conversation room is currently joined.
+    // joinCompany() ensures the socket is connected (the backend auto-joins
+    // company:messages on connect); onCompanyMessages() is the message:new
+    // stream broadcast to that room for every conversation.
+    this.socket.joinCompany();
     this.listMessageSub = this.socket
-      .on<MessageNewPayload>('message:new')
+      .onCompanyMessages<MessageNewPayload>()
       .subscribe((payload) => this.onListMessage(payload));
   }
 
@@ -719,7 +723,11 @@ export class ConversationsPage implements OnInit, OnDestroy {
   private onListMessage(payload: MessageNewPayload): void {
     if (!payload?.message) return;
     const id = payload.conversationId;
-    if (id === this.selectedId()) return;   // active thread handled elsewhere
+    // Double-count guard: the backend emits message:new to BOTH conversation:<id>
+    // and company:messages, so the open thread's socket receives it twice. The
+    // active thread is already handled by onMessageNew (via the conversation
+    // room), so ignore the company-feed copy here — never bump its badge.
+    if (id === this.selectedId()) return;
 
     this.unreadCounts.update((m) => {
       const next = new Map(m);

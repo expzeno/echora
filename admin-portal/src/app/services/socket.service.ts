@@ -57,6 +57,27 @@ export class SocketService {
   }
 
   /**
+   * Ensure the shared socket is open so this client is a member of the
+   * company-wide `company:messages` room. The backend auto-joins every client
+   * to that room on connection (see realtime/gateway.js), so the client then
+   * receives `message:new` for *every* conversation — including threads that
+   * aren't currently open — which is what drives the cross-thread unread
+   * badges. Idempotent: call once on component init; re-calls are no-ops.
+   */
+  joinCompany(): void {
+    this.connect();
+  }
+
+  /**
+   * Stream of `message:new` events delivered via the company-wide room.
+   * A semantic alias over `on('message:new')` for list-level unread tracking,
+   * so callers read as "listen to the company feed" rather than the raw event.
+   */
+  onCompanyMessages<T = unknown>(): Observable<T> {
+    return this.on<T>('message:new');
+  }
+
+  /**
    * Subscribe to a socket event. Emissions are marshalled back into Angular's
    * zone so signal updates in the callback trigger change detection. The
    * returned Observable removes the listener on unsubscribe.
