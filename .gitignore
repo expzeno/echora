@@ -13,3 +13,4 @@ coverage/
 .scaffold-done
 tmp/
 .cache/
+.verify-shots/

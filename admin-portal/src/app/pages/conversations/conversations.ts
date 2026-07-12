@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { ConversationService, Conversation as ApiConversation, Message as ApiMessage } from '../../services/conversation.service';
 import { AgentService, Agent } from '../../services/agent.service';
+import { Global } from '../../services/global';
 import { QuickReplyService, QuickReply } from '../../services/quick-reply.service';
 import { SocketService } from '../../services/socket.service';
 import { FormsModule } from '@angular/forms';
@@ -22,6 +23,7 @@ interface MessageNewPayload {
 
 type ConvStatus = 'open' | 'pending' | 'resolved' | 'closed';
 type ConvFilter = 'all' | 'open' | 'pending' | 'resolved';
+type AssigneeFilter = 'all' | 'mine' | 'unassigned';
 
 interface Conversation {
   id: string;
@@ -89,6 +91,21 @@ interface ThreadMessage {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                   </svg>
+                </button>
+              }
+            </div>
+            <!-- ── INBOX ASSIGNEE FILTER (All / Mine / Unassigned) ──── -->
+            <div class="conv-assignee-pills" role="group" aria-label="Filter by assignee">
+              @for (a of assigneeTabs; track a.key) {
+                <button
+                  class="conv-assignee-pill"
+                  [class.conv-assignee-pill--active]="assigneeFilter() === a.key"
+                  [attr.aria-pressed]="assigneeFilter() === a.key"
+                  (click)="assigneeFilter.set(a.key)">
+                  {{ a.label }}
+                  @if (assigneeCountFor(a.key); as n) {
+                    <span class="conv-assignee-count">{{ n }}</span>
+                  }
                 </button>
               }
             </div>
@@ -422,6 +439,36 @@ interface ThreadMessage {
     }
     .conv-tab:not(.conv-tab--active) .conv-tab-count {
       background: var(--surface-2); color: var(--admin-text-secondary);
+    }
+
+    /* ── INBOX ASSIGNEE FILTER PILLS ──────────────────────────── */
+    /* Second filter layer (All / Mine / Unassigned) that stacks on top of the
+       search + status filters. Teal active pill mirrors the status triage pills. */
+    .conv-assignee-pills {
+      display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+    }
+    .conv-assignee-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      color: var(--admin-text-secondary);
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.2px;
+      cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+    }
+    .conv-assignee-pill:hover { color: var(--admin-text); background: var(--surface); }
+    .conv-assignee-pill--active {
+      background: var(--brand-secondary, #14B8A6); color: #fff;   /* Teal */
+      border-color: var(--brand-secondary, #14B8A6);
+    }
+    .conv-assignee-count {
+      font-size: 10px; font-weight: 700; line-height: 1;
+      padding: 2px 5px; border-radius: var(--radius-full);
+      background: var(--surface); color: var(--admin-text-secondary);
+    }
+    .conv-assignee-pill--active .conv-assignee-count {
+      background: rgba(255,255,255,0.20); color: #fff;
     }
 
     .conv-cards {
@@ -897,6 +944,7 @@ export class ConversationsPage implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly api = inject(ConversationService);
   private readonly agentApi = inject(AgentService);
+  private readonly global = inject(Global);
   private readonly quickReplyApi = inject(QuickReplyService);
   private readonly socket = inject(SocketService);
   private readonly host = inject(ElementRef<HTMLElement>);
@@ -917,6 +965,13 @@ export class ConversationsPage implements OnInit, OnDestroy {
     { key: 'resolved', label: 'Resolved' },
   ];
 
+  // Inbox assignee filter — a second layer stacked on top of search + status.
+  readonly assigneeTabs: { key: AssigneeFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'mine', label: 'Mine' },
+    { key: 'unassigned', label: 'Unassigned' },
+  ];
+
   // Status triage options rendered as pills in the thread header.
   readonly statusOptions: { key: ConvStatus; label: string }[] = [
     { key: 'open', label: 'Open' },
@@ -931,6 +986,7 @@ export class ConversationsPage implements OnInit, OnDestroy {
   readonly query = signal('');
   private searchDebounce: ReturnType<typeof setTimeout> | null = null;
   readonly filter = signal<ConvFilter>('all');
+  readonly assigneeFilter = signal<AssigneeFilter>('all');
   readonly selectedId = signal<string | null>(null);
   readonly draft = signal('');
   readonly mode = signal<'ai' | 'human'>('ai');
@@ -961,6 +1017,17 @@ export class ConversationsPage implements OnInit, OnDestroy {
   readonly agents = signal<Agent[]>([]);
   readonly assignOpen = signal(false);
   readonly assignUpdating = signal(false);
+
+  // Resolve the logged-in user to their Agent id by matching email against the
+  // roster — conversations store `assignedAgentId` (an Agent id), while the auth
+  // profile only carries the admin user. Null until the roster loads or if the
+  // current user isn't in the active-agent list. Drives the "Mine" filter.
+  readonly currentAgentId = computed<string | null>(() => {
+    const email = this.global.user()?.email?.toLowerCase();
+    if (!email) return null;
+    const me = this.agents().find((a) => a.email?.toLowerCase() === email);
+    return me?.id ?? null;
+  });
 
   // ── Thread state machine ──────────────────────────────────────
   // The real messaging service replaces the body of loadThread(); the
@@ -1096,11 +1163,31 @@ export class ConversationsPage implements OnInit, OnDestroy {
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     const f = this.filter();
+    const af = this.assigneeFilter();
+    const mine = this.currentAgentId();
     return this.conversations()
       .filter(c => this.matchesFilter(c.status, f))
+      .filter(c => this.matchesAssignee(c, af, mine))
       .filter(c => !q || c.customerPhone.includes(q) || c.preview.toLowerCase().includes(q))
       .sort((a, b) => b.lastMessageAt - a.lastMessageAt);
   });
+
+  /**
+   * Inbox assignee filter — stacks on top of status + search.
+   *   all        → every conversation
+   *   mine       → assigned to the logged-in agent (none if we can't resolve them)
+   *   unassigned → assignedAgentId is null
+   */
+  private matchesAssignee(c: Conversation, af: AssigneeFilter, mine: string | null): boolean {
+    if (af === 'all') return true;
+    if (af === 'unassigned') return c.assignedAgentId == null;
+    return mine != null && c.assignedAgentId === mine;   // 'mine'
+  }
+
+  assigneeCountFor(af: AssigneeFilter): number {
+    const mine = this.currentAgentId();
+    return this.conversations().filter(c => this.matchesAssignee(c, af, mine)).length;
+  }
 
   readonly selected = computed(() =>
     this.conversations().find(c => c.id === this.selectedId()) ?? null,
