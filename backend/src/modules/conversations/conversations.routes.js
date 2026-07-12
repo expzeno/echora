@@ -11,5 +11,7 @@ router.get('/:id', authenticate, handle(ConversationService.detail, { paramOrder
 router.get('/:id/messages', authenticate, handle(ConversationService.messages, { paramOrder: ['id'] }));
 router.post('/:id/messages', authenticate, handle(ConversationService.sendMessage, { paramOrder: ['id'] }));
 router.patch('/:id/status', authenticate, handle(ConversationService.updateStatus, { paramOrder: ['id'] }));
+// Assign / unassign the conversation to an agent — body: { assignedAgentId: <uuid>|null }.
+router.patch('/:id', authenticate, handle(ConversationService.assign, { paramOrder: ['id'] }));
 
 export const conversationRoutes = router;

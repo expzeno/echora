@@ -28,6 +28,10 @@ function shapeConversation(c) {
           phone_number: c.contact.phoneNumber || c.contact.waId || null,
         }
       : null,
+    assignedAgentId: c.assignedAgentId ?? null,
+    assignedAgent: c.assignedAgent
+      ? { id: c.assignedAgent.id, displayName: c.assignedAgent.displayName }
+      : null,
     lastMessage: last ? { content: last.body, createdAt: last.createdAt } : null,
     unreadCount: 0,
     lastMessageAt: c.lastMessageAt,
@@ -67,6 +71,7 @@ export class ConversationService {
         where,
         include: {
           contact: true,
+          assignedAgent: { select: { id: true, displayName: true } },
           messages: { orderBy: { createdAt: 'desc' }, take: 1 },
         },
         orderBy: [{ lastMessageAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
@@ -82,7 +87,11 @@ export class ConversationService {
   static async detail(querier, id) {
     const c = await prisma.conversation.findUnique({
       where: { id },
-      include: { contact: true, whatsappNumber: true },
+      include: {
+        contact: true,
+        whatsappNumber: true,
+        assignedAgent: { select: { id: true, displayName: true } },
+      },
     });
     if (!c) return { ok: false, message: 'Conversation not found', code: 'NotFound' };
 
@@ -92,6 +101,9 @@ export class ConversationService {
         id: c.id,
         status: c.status,
         assignedAgentId: c.assignedAgentId,
+        assignedAgent: c.assignedAgent
+          ? { id: c.assignedAgent.id, displayName: c.assignedAgent.displayName }
+          : null,
         contact: c.contact
           ? {
               id: c.contact.id,
@@ -185,5 +197,44 @@ export class ConversationService {
     });
 
     return { ok: true, detail: { id: updated.id, status: updated.status, updatedAt: updated.updatedAt } };
+  }
+
+  // PATCH /api/v1/conversations/:id — assign (or unassign) a conversation to an agent.
+  // Body: { assignedAgentId: <uuid> | null }. Passing null (or empty) unassigns.
+  static async assign(querier, id, data) {
+    if (!('assignedAgentId' in data)) {
+      return { ok: false, message: 'assignedAgentId is required', code: 'BadRequest' };
+    }
+
+    const raw = data.assignedAgentId;
+    const agentId = raw === null || raw === '' ? null : String(raw);
+
+    const conv = await prisma.conversation.findUnique({ where: { id }, select: { id: true } });
+    if (!conv) return { ok: false, message: 'Conversation not found', code: 'NotFound' };
+
+    // When assigning (not clearing), the target agent must exist.
+    if (agentId) {
+      const agent = await prisma.agent.findUnique({ where: { id: agentId }, select: { id: true } });
+      if (!agent) return { ok: false, message: 'Agent not found', code: 'NotFound' };
+    }
+
+    const updated = await prisma.conversation.update({
+      where: { id },
+      data: { assignedAgentId: agentId },
+      include: { assignedAgent: { select: { id: true, displayName: true } } },
+    });
+
+    return {
+      ok: true,
+      detail: {
+        id: updated.id,
+        status: updated.status,
+        assignedAgentId: updated.assignedAgentId,
+        assignedAgent: updated.assignedAgent
+          ? { id: updated.assignedAgent.id, displayName: updated.assignedAgent.displayName }
+          : null,
+        updatedAt: updated.updatedAt,
+      },
+    };
   }
 }

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { ConversationService, Conversation as ApiConversation, Message as ApiMessage } from '../../services/conversation.service';
+import { AgentService, Agent } from '../../services/agent.service';
 import { SocketService } from '../../services/socket.service';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
@@ -27,7 +28,8 @@ interface Conversation {
   preview: string;
   status: ConvStatus;
   unreadCount: number;
-  assignedAgent: string | null;
+  assignedAgentId: string | null;
+  assignedAgent: string | null;   // display name of the assigned agent
   lastMessageAt: number;      // epoch ms
 }
 
@@ -150,11 +152,61 @@ interface ThreadMessage {
                 <span class="conv-dot" [ngClass]="'conv-dot--' + selected()!.status"></span>
                 <div>
                   <div class="conv-detail-phone">{{ maskPhone(selected()!.customerPhone) }}</div>
-                  <div class="conv-detail-meta">
-                    @if (selected()!.assignedAgent) {
-                      Assigned to <strong>{{ selected()!.assignedAgent }}</strong>
-                    } @else {
-                      <span class="conv-unassigned">Unassigned</span>
+                  <!-- ── ASSIGNEE PICKER ──────────────────────────── -->
+                  <div class="conv-assign" [class.conv-assign--open]="assignOpen()">
+                    <button
+                      type="button"
+                      class="conv-assign-trigger"
+                      [class.conv-assign-trigger--unassigned]="!selected()!.assignedAgent"
+                      [disabled]="assignUpdating()"
+                      [attr.aria-expanded]="assignOpen()"
+                      aria-haspopup="listbox"
+                      (click)="toggleAssign($event)">
+                      @if (selected()!.assignedAgent) {
+                        <span class="conv-assign-dot" aria-hidden="true"></span>
+                        <span class="conv-assign-name">{{ selected()!.assignedAgent }}</span>
+                      } @else {
+                        <span class="conv-assign-name conv-unassigned">Unassigned</span>
+                      }
+                      <svg class="conv-assign-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                    @if (assignOpen()) {
+                      <div class="conv-assign-menu" role="listbox" aria-label="Assign to agent">
+                        <button
+                          type="button"
+                          class="conv-assign-item conv-assign-item--none"
+                          role="option"
+                          [attr.aria-selected]="!selected()!.assignedAgentId"
+                          (click)="assign(null)">
+                          Unassign
+                        </button>
+                        @for (a of agents(); track a.id) {
+                          <button
+                            type="button"
+                            class="conv-assign-item"
+                            role="option"
+                            [class.conv-assign-item--active]="selected()!.assignedAgentId === a.id"
+                            [attr.aria-selected]="selected()!.assignedAgentId === a.id"
+                            (click)="assign(a.id)">
+                            <span class="conv-assign-dot" aria-hidden="true"></span>
+                            <span class="conv-assign-item-name">{{ a.displayName }}</span>
+                            @if (selected()!.assignedAgentId === a.id) {
+                              <svg class="conv-assign-check" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                              </svg>
+                            }
+                          </button>
+                        } @empty {
+                          <div class="conv-assign-empty">No agents available</div>
+                        }
+                      </div>
+                      <button
+                        type="button"
+                        class="conv-assign-backdrop"
+                        aria-label="Close assignee menu"
+                        (click)="closeAssign()"></button>
                     }
                   </div>
                 </div>
@@ -440,6 +492,81 @@ interface ThreadMessage {
     .conv-detail-meta strong { color: var(--brand-secondary); font-weight: 600; }
     .conv-unassigned { color: var(--admin-text-muted); }
 
+    /* ── ASSIGNEE PICKER ──────────────────────────────────────── */
+    .conv-assign { position: relative; margin-top: 3px; }
+    .conv-assign-trigger {
+      display: inline-flex; align-items: center; gap: 6px;
+      max-width: 220px;
+      padding: 3px 8px 3px 9px;
+      background: rgba(20,184,166,0.10);        /* Teal tint */
+      border: 1px solid rgba(20,184,166,0.30);
+      border-radius: var(--radius-full);
+      color: var(--brand-secondary, #14B8A6);
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: background .15s, border-color .15s, opacity .15s;
+    }
+    .conv-assign-trigger:hover:not(:disabled) { background: rgba(20,184,166,0.18); }
+    .conv-assign-trigger:disabled { cursor: default; opacity: 0.6; }
+    .conv-assign-trigger--unassigned {
+      background: var(--surface-2);
+      border-color: var(--border);
+      color: var(--admin-text-secondary);
+    }
+    .conv-assign-trigger--unassigned:hover:not(:disabled) { background: var(--surface); }
+    .conv-assign-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+      background: var(--brand-secondary, #14B8A6);
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.18);
+    }
+    .conv-assign-name {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .conv-assign-caret {
+      flex-shrink: 0; opacity: 0.75; transition: transform .18s;
+    }
+    .conv-assign--open .conv-assign-caret { transform: rotate(180deg); }
+
+    .conv-assign-menu {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+      min-width: 210px; max-width: 260px; max-height: 280px; overflow-y: auto;
+      padding: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.32);
+    }
+    .conv-assign-item {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; text-align: left;
+      padding: 8px 9px;
+      background: transparent; border: none; border-radius: var(--radius-sm);
+      color: var(--admin-text);
+      font-family: var(--font-body); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background .12s;
+    }
+    .conv-assign-item:hover { background: var(--surface-2); }
+    .conv-assign-item--active { background: rgba(20,184,166,0.12); }
+    .conv-assign-item-name {
+      flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .conv-assign-check { color: var(--brand-secondary, #14B8A6); flex-shrink: 0; }
+    .conv-assign-item--none {
+      color: var(--admin-text-secondary); font-weight: 600;
+      border-bottom: 1px solid var(--border); border-radius: 0;
+      margin-bottom: 4px; padding-bottom: 10px;
+    }
+    .conv-assign-item--none:hover { background: var(--surface-2); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+    .conv-assign-empty {
+      padding: 12px 9px; text-align: center;
+      font-size: 12.5px; color: var(--admin-text-muted);
+    }
+    .conv-assign-backdrop {
+      position: fixed; inset: 0; z-index: 30;
+      background: transparent; border: none; padding: 0; margin: 0;
+      cursor: default;
+    }
+
     .conv-detail-actions { display: flex; align-items: center; gap: 10px; }
     .conv-badge {
       font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
@@ -657,6 +784,7 @@ interface ThreadMessage {
 export class ConversationsPage implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly api = inject(ConversationService);
+  private readonly agentApi = inject(AgentService);
   private readonly socket = inject(SocketService);
   private readonly host = inject(ElementRef<HTMLElement>);
 
@@ -695,6 +823,13 @@ export class ConversationsPage implements OnInit, OnDestroy {
   readonly mode = signal<'ai' | 'human'>('ai');
   readonly statusUpdating = signal(false);
 
+  // ── Assignee picker ───────────────────────────────────────────
+  // `agents` is the roster fetched once on load; `assignOpen` toggles the
+  // header dropdown; `assignUpdating` disables the trigger during the PATCH.
+  readonly agents = signal<Agent[]>([]);
+  readonly assignOpen = signal(false);
+  readonly assignUpdating = signal(false);
+
   // ── Thread state machine ──────────────────────────────────────
   // The real messaging service replaces the body of loadThread(); the
   // template already renders skeleton / empty / error / ready off these.
@@ -727,6 +862,7 @@ export class ConversationsPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadConversations();
+    this.loadAgents();
     // Subscribe to the company-wide feed so badges accrue on background
     // threads, independent of whichever conversation room is currently joined.
     // joinCompany() ensures the socket is connected (the backend auto-joins
@@ -798,7 +934,8 @@ export class ConversationsPage implements OnInit, OnDestroy {
       preview: c.lastMessage?.content || 'No messages yet',
       status,
       unreadCount: c.unreadCount ?? 0,
-      assignedAgent: null,
+      assignedAgentId: c.assignedAgentId ?? null,
+      assignedAgent: c.assignedAgent?.displayName ?? null,
       lastMessageAt: ts ? Date.parse(ts) : Date.now(),
     };
   }
@@ -903,6 +1040,69 @@ export class ConversationsPage implements OnInit, OnDestroy {
     });
   }
 
+  /** Fetch the agent roster once so the assignee picker can list them. */
+  loadAgents(): void {
+    this.agentApi.getAgents().subscribe({
+      next: (list) => this.agents.set(list.filter((a) => a.isActive)),
+      error: () => { /* picker simply shows "No agents available" */ },
+    });
+  }
+
+  /** Toggle the assignee dropdown open/closed. */
+  toggleAssign(ev: Event): void {
+    ev.stopPropagation();
+    if (this.assignUpdating()) return;
+    this.assignOpen.update((v) => !v);
+  }
+
+  closeAssign(): void {
+    this.assignOpen.set(false);
+  }
+
+  /**
+   * Assign (or, with agentId = null, unassign) the open conversation to an agent.
+   * Optimistically updates the list/header, then reconciles / rolls back on the
+   * API result — mirroring the status-triage flow.
+   */
+  assign(agentId: string | null): void {
+    const c = this.selected();
+    this.closeAssign();
+    if (!c || this.assignUpdating()) return;
+    if ((c.assignedAgentId ?? null) === agentId) return;   // no-op
+
+    const prevId = c.assignedAgentId ?? null;
+    const prevName = c.assignedAgent;
+    const nextName = agentId
+      ? this.agents().find((a) => a.id === agentId)?.displayName ?? null
+      : null;
+
+    this.assignUpdating.set(true);
+    this.conversations.update((list) =>
+      list.map((x) => (x.id === c.id ? { ...x, assignedAgentId: agentId, assignedAgent: nextName } : x)),
+    );
+
+    this.api.assignAgent(c.id, agentId).subscribe({
+      next: (detail) => {
+        // Trust the server's canonical assignment (name may differ from our guess).
+        const serverId = detail.assignedAgentId ?? null;
+        const serverName = detail.assignedAgent?.displayName ?? null;
+        this.conversations.update((list) =>
+          list.map((x) => (x.id === c.id ? { ...x, assignedAgentId: serverId, assignedAgent: serverName } : x)),
+        );
+        this.assignUpdating.set(false);
+        this.toast.show(agentId ? `Assigned to ${nextName}` : 'Conversation unassigned', 'success');
+      },
+      error: () => {
+        // Roll back the optimistic change and surface the failure.
+        this.conversations.update((list) =>
+          list.map((x) => (x.id === c.id ? { ...x, assignedAgentId: prevId, assignedAgent: prevName } : x)),
+        );
+        this.assignUpdating.set(false);
+        this.toast.show('Failed to update assignment', 'error');
+      },
+    });
+  }
+
   /** Closed conversations fold into the Resolved tab; every status shows under All. */
   private matchesFilter(status: ConvStatus, f: ConvFilter): boolean {
     if (f === 'all') return true;
@@ -920,6 +1120,7 @@ export class ConversationsPage implements OnInit, OnDestroy {
 
     this.selectedId.set(id);
     this.draft.set('');
+    this.closeAssign();
     if (id) {
       this.conversations.update(list =>
         list.map(c => (c.id === id ? { ...c, unreadCount: 0 } : c)),

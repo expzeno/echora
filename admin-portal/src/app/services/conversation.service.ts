@@ -15,10 +15,17 @@ export interface ConversationPreview {
   createdAt: string;
 }
 
+export interface ConversationAssignedAgent {
+  id: string;
+  displayName: string;
+}
+
 export interface Conversation {
   id: string;
   status: string;
   contact: ConversationContact | null;
+  assignedAgentId?: string | null;
+  assignedAgent?: ConversationAssignedAgent | null;
   lastMessage?: ConversationPreview | null;
   unreadCount?: number;
   lastMessageAt?: string | null;
@@ -100,6 +107,13 @@ export class ConversationService {
   updateStatus(conversationId: string, status: string): Observable<Conversation> {
     return this.http
       .patch<DetailResponse<Conversation>>(`${this.base}/${conversationId}/status`, { status })
+      .pipe(map((res) => res.detail), catchError(this.handleError));
+  }
+
+  // Assign (or unassign, with agentId = null) a conversation to an agent.
+  assignAgent(conversationId: string, agentId: string | null): Observable<Conversation> {
+    return this.http
+      .patch<DetailResponse<Conversation>>(`${this.base}/${conversationId}`, { assignedAgentId: agentId })
       .pipe(map((res) => res.detail), catchError(this.handleError));
   }
 
