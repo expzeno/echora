@@ -51,18 +51,6 @@ interface ThreadMessage {
         <aside class="conv-list" [class.conv-list--hidden]="selectedId()">
           <div class="conv-list-head">
             <h1 class="conv-title">Conversations</h1>
-            <div class="conv-search">
-              <svg class="conv-search-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
-                <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              </svg>
-              <input
-                class="conv-search-input"
-                type="text"
-                [ngModel]="query()"
-                (ngModelChange)="query.set($event)"
-                placeholder="Search conversations…" />
-            </div>
             <div class="conv-tabs" role="tablist">
               @for (t of tabs; track t.key) {
                 <button
@@ -75,6 +63,29 @@ interface ThreadMessage {
                   @if (countFor(t.key); as n) {
                     <span class="conv-tab-count">{{ n }}</span>
                   }
+                </button>
+              }
+            </div>
+            <div class="conv-search">
+              <svg class="conv-search-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+                <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+              <input
+                class="conv-search-input"
+                type="text"
+                [ngModel]="searchInput()"
+                (ngModelChange)="onSearchInput($event)"
+                placeholder="Search conversations…" />
+              @if (searchInput()) {
+                <button
+                  class="conv-search-clear"
+                  type="button"
+                  aria-label="Clear search"
+                  (click)="clearSearch()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
                 </button>
               }
             </div>
@@ -278,14 +289,14 @@ interface ThreadMessage {
       color: var(--admin-text); margin: 0 0 14px;
     }
 
-    .conv-search { position: relative; margin-bottom: 12px; }
+    .conv-search { position: relative; margin-top: 12px; }
     .conv-search-ic {
       position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
       color: var(--admin-text-muted); pointer-events: none;
     }
     .conv-search-input {
       width: 100%; box-sizing: border-box;
-      padding: 9px 12px 9px 32px;
+      padding: 9px 34px 9px 32px;
       background: var(--app-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
@@ -295,6 +306,15 @@ interface ThreadMessage {
     }
     .conv-search-input::placeholder { color: var(--admin-text-muted); }
     .conv-search-input:focus { border-color: var(--brand-primary); }
+    .conv-search-clear {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      width: 22px; height: 22px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: transparent; border: none; border-radius: var(--radius-full);
+      color: var(--admin-text-muted); cursor: pointer;
+      transition: color .15s, background .15s;
+    }
+    .conv-search-clear:hover { color: var(--admin-text); background: var(--surface-2); }
 
     .conv-tabs { display: flex; gap: 4px; }
     .conv-tab {
@@ -664,7 +684,11 @@ export class ConversationsPage implements OnInit, OnDestroy {
     { key: 'closed', label: 'Closed' },
   ];
 
+  // `searchInput` is the immediate text bound to the input (drives the clear
+  // button); `query` is the debounced value the list actually filters on.
+  readonly searchInput = signal('');
   readonly query = signal('');
+  private searchDebounce: ReturnType<typeof setTimeout> | null = null;
   readonly filter = signal<ConvFilter>('all');
   readonly selectedId = signal<string | null>(null);
   readonly draft = signal('');
@@ -783,6 +807,20 @@ export class ConversationsPage implements OnInit, OnDestroy {
   private normalizeStatus(s: string): ConvStatus {
     if (s === 'open' || s === 'pending' || s === 'resolved' || s === 'closed') return s;
     return 'open';
+  }
+
+  /** Debounce the search: update the input instantly, the filter after ~300ms. */
+  onSearchInput(value: string): void {
+    this.searchInput.set(value);
+    if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    this.searchDebounce = setTimeout(() => this.query.set(value), 300);
+  }
+
+  /** Clear the search box and reset the filter immediately (no debounce wait). */
+  clearSearch(): void {
+    if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    this.searchInput.set('');
+    this.query.set('');
   }
 
   readonly filtered = computed(() => {
@@ -959,6 +997,7 @@ export class ConversationsPage implements OnInit, OnDestroy {
     this.leaveRoom();
     this.listMessageSub?.unsubscribe();
     this.listMessageSub = null;
+    if (this.searchDebounce) clearTimeout(this.searchDebounce);
   }
 
   /** Enter submits; Shift+Enter inserts a newline. */
