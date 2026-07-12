@@ -15,6 +15,7 @@ export const routes: Routes = [
       { path: 'conversations', loadComponent: () => import('./pages/conversations/conversations').then(m => m.ConversationsPage) },
       { path: 'contacts', loadComponent: () => import('./pages/contacts/contacts').then(m => m.ContactsPage) },
       { path: 'agents', loadComponent: () => import('./pages/agents/agents').then(m => m.AgentsPage) },
+      { path: 'quick-replies', loadComponent: () => import('./pages/quick-replies/quick-replies').then(m => m.QuickRepliesPage) },
       { path: 'whatsapp-numbers', loadComponent: () => import('./pages/whatsapp-numbers/whatsapp-numbers').then(m => m.WhatsAppNumbersPage) },
       { path: 'integrations', loadComponent: () => import('./pages/integrations/integrations').then(m => m.IntegrationsPage) },
       { path: 'settings', loadComponent: () => import('./pages/settings/settings').then(m => m.SettingsPage) },

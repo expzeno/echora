@@ -137,6 +137,7 @@ export class LayoutComponent implements OnInit {
     { label: 'Conversations', url: '/conversations', icon: 'chatbubbles-outline', adminOnly: false },
     { label: 'Contacts', url: '/contacts', icon: 'people-outline', adminOnly: false },
     { label: 'Agents', url: '/agents', icon: 'person-outline', adminOnly: true },
+    { label: 'Quick Replies', url: '/quick-replies', icon: 'flash-outline', adminOnly: true },
     { label: 'WhatsApp Numbers', url: '/whatsapp-numbers', icon: 'logo-whatsapp', adminOnly: true },
   ];
 
