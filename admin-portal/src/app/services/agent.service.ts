@@ -12,6 +12,8 @@ export interface Agent {
   role: string;          // agent | lead | admin
   status: string;        // active | suspended
   isActive: boolean;
+  systemPrompt?: string; // agent behaviour instructions
+  model?: string;        // LLM model id (default claude-sonnet-4-6)
   createdAt?: string;
   updatedAt?: string;
 }
@@ -28,6 +30,8 @@ export interface AgentUpdate {
   role?: string;
   status?: string;
   isActive?: boolean;
+  systemPrompt?: string;
+  model?: string;
 }
 
 interface ListResponse<T> {

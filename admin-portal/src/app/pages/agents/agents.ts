@@ -270,16 +270,17 @@ interface Agent {
             <div class="ag-drawer-field">
               <label>System Prompt</label>
               <textarea class="ag-input ag-textarea" rows="8"
-                [value]="ca.systemPrompt"
+                [ngModel]="configPrompt()" (ngModelChange)="configPrompt.set($event)"
                 placeholder="You are a helpful support agent for..."></textarea>
             </div>
 
             <!-- Model select -->
             <div class="ag-drawer-field">
               <label>Model</label>
-              <select class="ag-input ag-select">
-                <option value="claude-sonnet-4-6" [selected]="ca.model === 'claude-sonnet-4-6'">claude-sonnet-4-6</option>
-                <option value="claude-haiku-4-5" [selected]="ca.model === 'claude-haiku-4-5'">claude-haiku-4-5</option>
+              <select class="ag-input ag-select"
+                [ngModel]="configModel()" (ngModelChange)="configModel.set($event)">
+                <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+                <option value="claude-haiku-4-5">claude-haiku-4-5</option>
               </select>
             </div>
 
@@ -615,8 +616,10 @@ export class AgentsPage implements OnInit {
 
   // which agent is being configured (null = drawer closed)
   readonly configAgent = signal<Agent | null>(null);
-  // editable draft of the configured agent's name (drawer)
+  // editable drafts of the configured agent's fields (drawer)
   readonly configName = signal('');
+  readonly configPrompt = signal('');
+  readonly configModel = signal('claude-sonnet-4-6');
 
   // agent queued for deletion (null = confirm modal closed)
   readonly pendingDelete = signal<Agent | null>(null);
@@ -643,9 +646,9 @@ export class AgentsPage implements OnInit {
       role: a.role,
       status: a.status,
       number: '—',                         // no WA linkage in backend yet
-      model: 'claude-sonnet-4-6',          // UI-only default
+      model: a.model || 'claude-sonnet-4-6',
       conversations: 0,                    // UI-only until backend exposes it
-      systemPrompt: '',                    // UI-only
+      systemPrompt: a.systemPrompt || '',
     };
   }
 
@@ -677,9 +680,11 @@ export class AgentsPage implements OnInit {
   }
   closeModal(): void { this.modalOpen.set(false); }
 
-  /** Open the configure drawer and seed the editable name draft. */
+  /** Open the configure drawer and seed the editable drafts. */
   openConfig(a: Agent): void {
     this.configName.set(a.name);
+    this.configPrompt.set(a.systemPrompt || '');
+    this.configModel.set(a.model || 'claude-sonnet-4-6');
     this.configAgent.set(a);
   }
 
@@ -714,19 +719,23 @@ export class AgentsPage implements OnInit {
     });
   }
 
-  /** Persist drawer name edit, confirm via toast, then close. */
+  /** Persist drawer name/prompt/model edits, confirm via toast, then close. */
   saveConfig(): void {
     const ca = this.configAgent();
     if (!ca) return;
     const name = this.configName().trim();
     if (!name) { this.toast.show('Agent name cannot be empty', 'error'); return; }
+    const systemPrompt = this.configPrompt();
+    const model = this.configModel();
 
-    this.api.updateAgent(ca.id, { displayName: name }).subscribe({
+    this.api.updateAgent(ca.id, { displayName: name, systemPrompt, model }).subscribe({
       next: (updated) => {
         this.agents.update((list) =>
-          list.map((a) => (a.id === ca.id ? { ...a, name: updated.displayName } : a)));
+          list.map((a) => (a.id === ca.id
+            ? { ...a, name: updated.displayName, systemPrompt: updated.systemPrompt ?? systemPrompt, model: updated.model ?? model }
+            : a)));
         this.configAgent.set(null);
-        this.toast.show('Agent configuration saved', 'success');
+        this.toast.show('Configuration saved', 'success');
       },
       error: (e) => this.toast.show(e?.message || 'Could not save agent', 'error'),
     });
