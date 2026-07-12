@@ -8,6 +8,9 @@ function emitMessageNew(conversationId, message) {
   const io = getIO();
   if (!io) return;
   io.to(`conversation:${conversationId}`).emit('message:new', { conversationId, message });
+  // Also broadcast company-wide so agents get badge updates for threads they
+  // have not opened (and thus never joined the conversation room for).
+  io.to('company:messages').emit('message:new', { conversationId, message });
 }
 
 const VALID_STATUS = ['open', 'pending', 'resolved', 'closed'];

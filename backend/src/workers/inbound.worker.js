@@ -146,7 +146,7 @@ async function processInbound(job) {
         // handler; emit to the same room so subscribers get the live update.
         const io = getIO();
         if (io) {
-          io.to(`conversation:${conversation.id}`).emit('message:new', {
+          const payloadMsg = {
             conversationId: conversation.id,
             message: {
               id: savedMessage.id,
@@ -157,7 +157,10 @@ async function processInbound(job) {
               status: savedMessage.status,
               createdAt: savedMessage.createdAt,
             },
-          });
+          };
+          io.to(`conversation:${conversation.id}`).emit('message:new', payloadMsg);
+          // Also broadcast company-wide so background threads get badge updates.
+          io.to('company:messages').emit('message:new', payloadMsg);
         }
 
         processed += 1;

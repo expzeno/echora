@@ -20,6 +20,10 @@ export function initGateway(httpServer) {
   io.on('connection', (socket) => {
     logger.info({ socketId: socket.id }, '[realtime] client connected');
 
+    // Company-wide room: every connected client receives message:new events for
+    // all conversations, so unread badges update even for threads not opened.
+    socket.join('company:messages');
+
     // Agent subscribes to a conversation's live updates.
     socket.on('join:conversation', (conversationId) => {
       if (!conversationId) return;
